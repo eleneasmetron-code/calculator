@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Вариант 4: Bold Gradient 3D</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #0f0f1a;
+  color: #fff;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* 3D floating blob */
+.blob {
+  position: fixed;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.6;
+  animation: blobFloat 12s ease-in-out infinite;
+}
+
+.blob-1 {
+  background: linear-gradient(135deg, #ff6b6b, #feca57);
+  top: -200px;
+  left: -100px;
+}
+
+.blob-2 {
+  background: linear-gradient(135deg, #48dbfb, #0abde3);
+  bottom: -200px;
+  right: -100px;
+  animation-delay: 4s;
+}
+
+@keyframes blobFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(50px, -50px) scale(1.1); }
+  66% { transform: translate(-30px, 30px) scale(0.9); }
+}
+
+/* Grid dots pattern */
+.dots-pattern {
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,0.1) 1px, transparent 1px);
+  background-size: 30px 30px;
+  pointer-events: none;
+}
+
+.container {
+  position: relative;
+  z-index: 10;
+  max-width: 950px;
+  margin: 0 auto;
+  padding: 60px 32px;
+}
+
+/* Header */
+.header {
+  text-align: center;
+  margin-bottom: 50px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, rgba(255,107,107,0.2), rgba(254,202,87,0.2));
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #feca57;
+  margin-bottom: 24px;
+}
+
+.pill::before {
+  content: '✨';
+}
+
+h1 {
+  font-size: 72px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -3px;
+  margin-bottom: 20px;
+}
+
+.gradient-word {
+  background: linear-gradient(135deg, #ff6b6b 0%, #feca57 50%, #48dbfb 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+  font-size: 20px;
+  color: rgba(255,255,255,0.5);
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+/* Progress bar */
+.progress-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 40px;
+}
+
+.progress-segment {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.1);
+}
+
+.progress-segment.filled {
+  background: linear-gradient(90deg, #ff6b6b, #feca57);
+}
+
+/* Main card */
+.main-card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 32px;
+  padding: 48px;
+  backdrop-filter: blur(20px);
+  position: relative;
+  overflow: hidden;
+}
+
+.main-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #ff6b6b, #feca57, #48dbfb);
+}
+
+.card-title {
+  font-size: 28px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.card-subtitle {
+  font-size: 15px;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 32px;
+}
+
+/* 3D Type cards */
+.type-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.type-3d {
+  perspective: 500px;
+}
+
+.type-card {
+  padding: 28px 16px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.4s ease;
+  text-align: center;
+  transform-style: preserve-3d;
+}
+
+.type-card:hover {
+  transform: rotateY(-5deg) rotateX(5deg) translateZ(10px);
+  border-color: rgba(255,255,255,0.2);
+  box-shadow: 20px 20px 40px rgba(0,0,0,0.3);
+}
+
+.type-card.selected {
+  background: linear-gradient(135deg, rgba(255,107,107,0.2), rgba(254,202,87,0.15));
+  border-color: rgba(254,202,87,0.5);
+  transform: translateZ(20px);
+  box-shadow: 0 20px 40px rgba(255,107,107,0.2);
+}
+
+.type-emoji {
+  font-size: 40px;
+  margin-bottom: 12px;
+  display: block;
+}
+
+.type-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Nav buttons */
+.nav-buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 40px;
+}
+
+.btn-prev {
+  padding: 16px 28px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #fff;
+  border-radius: 14px;
+  cursor: pointer;
+  font-size: 15px;
+  transition: all 0.2s;
+}
+
+.btn-prev:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.btn-action {
+  padding: 18px 40px;
+  background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
+  color: #000;
+  font-weight: 700;
+  font-size: 16px;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 32px rgba(255,107,107,0.3);
+}
+
+.btn-action:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 48px rgba(255,107,107,0.4);
+}
+
+/* Counter row */
+.counters {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-top: 48px;
+}
+
+.counter {
+  text-align: center;
+}
+
+.counter-num {
+  font-size: 42px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #ff6b6b, #feca57);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.counter-label {
+  font-size: 13px;
+  color: rgba(255,255,255,0.4);
+}
+</style>
+</head>
+<body>
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="dots-pattern"></div>
+
+<div class="container">
+  <header class="header">
+    <div class="pill">AI-powered калькулятор</div>
+    <h1>Стоимость<br><span class="gradient-word">за 10 секунд</span></h1>
+    <p class="subtitle">Умный расчёт бюджета проекта на основе нейросети</p>
+  </header>
+
+  <div class="progress-bar">
+    <div class="progress-segment filled"></div>
+    <div class="progress-segment"></div>
+    <div class="progress-segment"></div>
+    <div class="progress-segment"></div>
+  </div>
+
+  <div class="main-card">
+    <h2 class="card-title">Какой тип проекта?</h2>
+    <p class="card-subtitle">Выберите одну из категорий ниже</p>
+
+    <div class="type-grid">
+      <div class="type-3d">
+        <div class="type-card selected">
+          <span class="type-emoji">🌐</span>
+          <div class="type-name">Лендинг</div>
+        </div>
+      </div>
+      <div class="type-3d">
+        <div class="type-card">
+          <span class="type-emoji">🏢</span>
+          <div class="type-name">Корпоративный</div>
+        </div>
+      </div>
+      <div class="type-3d">
+        <div class="type-card">
+          <span class="type-emoji">🛒</span>
+          <div class="type-name">Магазин</div>
+        </div>
+      </div>
+      <div class="type-3d">
+        <div class="type-card">
+          <span class="type-emoji">💻</span>
+          <div class="type-name">SaaS</div>
+        </div>
+      </div>
+      <div class="type-3d">
+        <div class="type-card">
+          <span class="type-emoji">📱</span>
+          <div class="type-name">Мобильное</div>
+        </div>
+      </div>
+      <div class="type-3d">
+        <div class="type-card">
+          <span class="type-emoji">🤖</span>
+          <div class="type-name">Бот</div>
+        </div>
+      </div>
+      <div class="type-3d">
+        <div class="type-card">
+          <span class="type-emoji">📊</span>
+          <div class="type-name">CRM</div>
+        </div>
+      </div>
+      <div class="type-3d">
+        <div class="type-card">
+          <span class="type-emoji">⚙️</span>
+          <div class="type-name">Backend</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-buttons">
+      <button class="btn-prev">← Назад</button>
+      <button class="btn-action">Рассчитать →</button>
+    </div>
+  </div>
+
+  <div class="counters">
+    <div class="counter">
+      <div class="counter-num">2.5K</div>
+      <div class="counter-label">Проектов</div>
+    </div>
+    <div class="counter">
+      <div class="counter-num">94%</div>
+      <div class="counter-label">Точность</div>
+    </div>
+    <div class="counter">
+      <div class="counter-num">10с</div>
+      <div class="counter-label">Расчёт</div>
+    </div>
+    <div class="counter">
+      <div class="counter-num">24/7</div>
+      <div class="counter-label">Доступно</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Калькулятор стоимости</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  :root {
+    --blue: #0066ff;
+    --cyan: #00d4ff;
+    --white: #ffffff;
+    --red: #ff4444;
+    --dark: #080818;
+    --glass-bg: rgba(8, 8, 24, 0.6);
+    --glass-border: rgba(0, 102, 255, 0.25);
+  }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--dark);
+    color: var(--white);
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  /* Loading bar */
+  #loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0%;
+    height: 2px;
+    background: linear-gradient(90deg, var(--blue), var(--cyan));
+    z-index: 9999;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 12px var(--cyan), 0 0 30px rgba(0, 212, 255, 0.3);
+  }
+
+  #loader.done {
+    opacity: 0;
+    transition: width 0.3s ease, opacity 0.6s ease 0.3s;
+  }
+
+  /* Three.js canvas */
+  #bg-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+  }
+
+  /* Vignette overlay */
+  .vignette {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(8, 8, 24, 0.5) 75%, rgba(8, 8, 24, 0.85) 100%);
+  }
+
+  /* Main content */
+  .content-wrapper {
+    position: relative;
+    z-index: 10;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+  }
+
+  .content-wrapper.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Glass panel */
+  .panel {
+    width: 100%;
+    max-width: 760px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border-radius: 24px;
+    padding: 48px 44px 40px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 24px;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(0, 102, 255, 0.4), rgba(0, 212, 255, 0.15), rgba(0, 102, 255, 0.08));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .panel::after {
+    content: '';
+    position: absolute;
+    top: -60%;
+    left: -20%;
+    width: 140%;
+    height: 100%;
+    background: radial-gradient(ellipse, rgba(0, 102, 255, 0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* Title */
+  .title {
+    font-family: 'Cabinet Grotesque', 'Outfit', sans-serif;
+    font-weight: 800;
+    font-size: 2.1rem;
+    letter-spacing: -0.02em;
+    text-align: center;
+    margin-bottom: 8px;
+    text-shadow: 0 0 30px rgba(0, 102, 255, 0.35), 0 0 60px rgba(0, 102, 255, 0.1);
+    position: relative;
+    z-index: 1;
+  }
+
+  .subtitle {
+    text-align: center;
+    font-weight: 300;
+    font-size: 1.05rem;
+    color: rgba(255, 255, 255, 0.55);
+    margin-bottom: 36px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Step label */
+  .step-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--cyan);
+    margin-bottom: 16px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Cards grid */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 36px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    padding: 20px 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    padding: 1px;
+    background: linear-gradient(135deg, transparent, transparent);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    transition: background 0.3s ease;
+  }
+
+  .card:hover {
+    transform: translateY(-4px);
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 8px 32px rgba(0, 102, 255, 0.12), 0 0 0 1px rgba(0, 212, 255, 0.15);
+  }
+
+  .card:hover::before {
+    background: linear-gradient(135deg, var(--cyan), var(--blue));
+  }
+
+  .card.selected {
+    background: rgba(0, 102, 255, 0.08);
+    box-shadow: 0 8px 32px rgba(0, 102, 255, 0.2), 0 0 60px rgba(0, 102, 255, 0.06);
+  }
+
+  .card.selected::before {
+    background: linear-gradient(135deg, var(--blue), var(--cyan));
+  }
+
+  .card-emoji {
+    font-size: 1.8rem;
+    margin-bottom: 8px;
+    display: block;
+    transition: transform 0.3s ease;
+  }
+
+  .card:hover .card-emoji {
+    transform: scale(1.1);
+  }
+
+  .card-label {
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.8);
+    transition: color 0.3s ease;
+  }
+
+  .card:hover .card-label {
+    color: var(--white);
+  }
+
+  .card.selected .card-label {
+    color: var(--white);
+    font-weight: 600;
+  }
+
+  /* Checkmark */
+  .card-check {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--blue), var(--cyan));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .card.selected .card-check {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .card-check svg {
+    width: 11px;
+    height: 11px;
+    stroke: white;
+    stroke-width: 2.5;
+    fill: none;
+  }
+
+  /* Bottom section */
+  .bottom-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Progress dots */
+  .progress-dots {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    transition: all 0.4s ease;
+  }
+
+  .dot.active {
+    background: var(--blue);
+    box-shadow: 0 0 10px rgba(0, 102, 255, 0.5);
+    width: 24px;
+    border-radius: 4px;
+  }
+
+  /* Next button */
+  .btn-next {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--white);
+    background: linear-gradient(135deg, var(--blue), #0055dd);
+    border: none;
+    border-radius: 12px;
+    padding: 13px 32px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    letter-spacing: 0.01em;
+  }
+
+  .btn-next::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--blue), var(--cyan));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .btn-next:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(0, 102, 255, 0.4), 0 0 50px rgba(0, 102, 255, 0.15);
+  }
+
+  .btn-next:hover::before {
+    opacity: 1;
+  }
+
+  .btn-next span {
+    position: relative;
+    z-index: 1;
+  }
+
+  .btn-next:active {
+    transform: translateY(0);
+  }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .panel {
+      padding: 32px 24px 28px;
+      border-radius: 20px;
+    }
+    .title {
+      font-size: 1.6rem;
+    }
+    .cards-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    .card {
+      padding: 16px 10px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div id="loader"></div>
+<canvas id="bg-canvas"></canvas>
+<div class="vignette"></div>
+
+<div class="content-wrapper" id="content">
+  <div class="panel">
+    <h1 class="title">Калькулятор стоимости</h1>
+    <p class="subtitle">Опишите проект &mdash; получите оценку за 10 секунд</p>
+
+    <div class="step-label">Шаг 1 &mdash; Тип проекта</div>
+
+    <div class="cards-grid">
+      <div class="card" data-type="landing">
+        <div class="card-check"><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3"/></svg></div>
+        <span class="card-emoji">&#x1F310;</span>
+        <span class="card-label">&#x041B;&#x0435;&#x043D;&#x0434;&#x0438;&#x043D;&#x0433;</span>
+      </div>
+      <div class="card" data-type="corporate">
+        <div class="card-check"><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3"/></svg></div>
+        <span class="card-emoji">&#x1F3E2;</span>
+        <span class="card-label">&#x041A;&#x043E;&#x0440;&#x043F;&#x043E;&#x0440;&#x0430;&#x0442;&#x0438;&#x0432;&#x043D;&#x044B;&#x0439;</span>
+      </div>
+      <div class="card" data-type="shop">
+        <div class="card-check"><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3"/></svg></div>
+        <span class="card-emoji">&#x1F6D2;</span>
+        <span class="card-label">&#x041C;&#x0430;&#x0433;&#x0430;&#x0437;&#x0438;&#x043D;</span>
+      </div>
+      <div class="card" data-type="saas">
+        <div class="card-check"><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3"/></svg></div>
+        <span class="card-emoji">&#x1F4BB;</span>
+        <span class="card-label">SaaS</span>
+      </div>
+      <div class="card" data-type="mobile">
+        <div class="card-check"><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3"/></svg></div>
+        <span class="card-emoji">&#x1F4F1;</span>
+        <span class="card-label">&#x041C;&#x043E;&#x0431;&#x0430;&#x0439;&#x043B;</span>
+      </div>
+      <div class="card" data-type="telegram">
+        <div class="card-check"><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3"/></svg></div>
+        <span class="card-emoji">&#x1F916;</span>
+        <span class="card-label">Telegram</span>
+      </div>
+      <div class="card" data-type="crm">
+        <div class="card-check"><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3"/></svg></div>
+        <span class="card-emoji">&#x1F4CA;</span>
+        <span class="card-label">CRM</span>
+      </div>
+      <div class="card" data-type="api">
+        <div class="card-check"><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3"/></svg></div>
+        <span class="card-emoji">&#x2699;&#xFE0F;</span>
+        <span class="card-label">API</span>
+      </div>
+      <div class="card" data-type="custom">
+        <div class="card-check"><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3"/></svg></div>
+        <span class="card-emoji">&#x2728;</span>
+        <span class="card-label">&#x0421;&#x0432;&#x043E;&#x0451;</span>
+      </div>
+    </div>
+
+    <div class="bottom-section">
+      <div class="progress-dots">
+        <div class="dot active"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+      <button class="btn-next"><span>&#x0414;&#x0430;&#x043B;&#x0435;&#x0435; &#x2192;</span></button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function() {
+  'use strict';
+
+  // ─── CONFIGURATION ───
+  const PARTICLE_COUNT   = 350;
+  const ACCENT_RED_COUNT = 8;
+  const CONNECT_DIST     = 140;
+  const MOUSE_RADIUS     = 160;
+  const MOUSE_STRENGTH   = 0.035;
+  const DRIFT_SPEED      = 0.0003;
+  const CAMERA_ORBIT_R   = 0.00015;
+  const FIELD_SIZE       = 600;
+
+  // ─── LOADING ───
+  const loader = document.getElementById('loader');
+  const content = document.getElementById('content');
+  let loadProgress = 0;
+  const loadInterval = setInterval(() => {
+    loadProgress += Math.random() * 18 + 8;
+    if (loadProgress >= 100) {
+      loadProgress = 100;
+      loader.style.width = '100%';
+      loader.classList.add('done');
+      clearInterval(loadInterval);
+      setTimeout(() => {
+        content.classList.add('visible');
+      }, 400);
+    } else {
+      loader.style.width = loadProgress + '%';
+    }
+  }, 120);
+
+  // ─── THREE.JS SETUP ───
+  const canvas = document.getElementById('bg-canvas');
+  const renderer = new THREE.WebGLRenderer({
+    canvas: canvas,
+    antialias: true,
+    alpha: false
+  });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x080818, 1);
+
+  const scene = new THREE.Scene();
+  // Subtle fog for depth
+  scene.fog = new THREE.FogExp2(0x080818, 0.0012);
+
+  const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 2000);
+  camera.position.z = 400;
+
+  // ─── PARTICLES ───
+  // We use individual sprites for proper 3D interaction, but for performance
+  // we'll use a Points system for rendering + a separate line system for connections.
+
+  // Particle data arrays
+  const positions = new Float32Array(PARTICLE_COUNT * 3);
+  const velocities = new Float32Array(PARTICLE_COUNT * 3);
+  const colors = new Float32Array(PARTICLE_COUNT * 3);
+  const sizes = new Float32Array(PARTICLE_COUNT);
+
+  // Color palette for particles
+  const colWhite = new THREE.Color(0xffffff);
+  const colCyan  = new THREE.Color(0x00d4ff);
+  const colBlue  = new THREE.Color(0x0066ff);
+  const colRed   = new THREE.Color(0xff4444);
+
+  const colorOptions = [colWhite, colCyan, colBlue];
+
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    const i3 = i * 3;
+    // Distribute in a sphere-ish volume
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    const r = Math.pow(Math.random(), 0.5) * FIELD_SIZE;
+    positions[i3]     = r * Math.sin(phi) * Math.cos(theta);
+    positions[i3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+    positions[i3 + 2] = r * Math.cos(phi);
+
+    // Gentle random drift velocity
+    velocities[i3]     = (Math.random() - 0.5) * 0.15;
+    velocities[i3 + 1] = (Math.random() - 0.5) * 0.15;
+    velocities[i3 + 2] = (Math.random() - 0.5) * 0.15;
+
+    // Color: mix of white, cyan, blue
+    const col = colorOptions[Math.floor(Math.random() * colorOptions.length)];
+    // Slight random variation
+    const variation = 0.9 + Math.random() * 0.1;
+    colors[i3]     = col.r * variation;
+    colors[i3 + 1] = col.g * variation;
+    colors[i3 + 2] = col.b * variation;
+
+    // Size: most are small, some are accent-sized
+    sizes[i] = Math.random() < 0.12 ? (3.5 + Math.random() * 2) : (1.2 + Math.random() * 1.8);
+  }
+
+  // Override first ACCENT_RED_COUNT particles to be red accent (larger, brighter)
+  for (let i = 0; i < ACCENT_RED_COUNT; i++) {
+    const i3 = i * 3;
+    colors[i3]     = colRed.r;
+    colors[i3 + 1] = colRed.g;
+    colors[i3 + 2] = colRed.b;
+    sizes[i] = 4.0 + Math.random() * 2.5;
+  }
+
+  // Create a circular particle texture
+  function createParticleTexture() {
+    const size = 64;
+    const c = document.createElement('canvas');
+    c.width = size;
+    c.height = size;
+    const ctx = c.getContext('2d');
+    const gradient = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+    gradient.addColorStop(0, 'rgba(255,255,255,1)');
+    gradient.addColorStop(0.15, 'rgba(255,255,255,0.9)');
+    gradient.addColorStop(0.4, 'rgba(255,255,255,0.35)');
+    gradient.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+    const tex = new THREE.CanvasTexture(c);
+    tex.needsUpdate = true;
+    return tex;
+  }
+
+  const particleTexture = createParticleTexture();
+
+  const particleGeometry = new THREE.BufferGeometry();
+  particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  particleGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+  // Custom shader for variable-size points with vertex colors
+  const particleMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+      uTexture: { value: particleTexture },
+      uPixelRatio: { value: renderer.getPixelRatio() }
+    },
+    vertexShader: `
+      attribute float size;
+      varying vec3 vColor;
+      uniform float uPixelRatio;
+      void main() {
+        vColor = color;
+        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+        gl_PointSize = size * uPixelRatio * (280.0 / -mvPosition.z);
+        gl_PointSize = max(gl_PointSize, 1.0);
+        gl_Position = projectionMatrix * mvPosition;
+      }
+    `,
+    fragmentShader: `
+      uniform sampler2D uTexture;
+      varying vec3 vColor;
+      void main() {
+        vec4 texel = texture2D(uTexture, gl_PointCoord);
+        if (texel.a < 0.01) discard;
+        gl_FragColor = vec4(vColor * texel.rgb, texel.a * 0.92);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    vertexColors: true
+  });
+
+  const particleSystem = new THREE.Points(particleGeometry, particleMaterial);
+  scene.add(particleSystem);
+
+  // ─── GLOW HALOS for accent particles ───
+  // Add subtle glow sprites for the red accent particles
+  function createGlowTexture(color) {
+    const size = 128;
+    const c = document.createElement('canvas');
+    c.width = size;
+    c.height = size;
+    const ctx = c.getContext('2d');
+    const gradient = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+    gradient.addColorStop(0, color + '44');
+    gradient.addColorStop(0.3, color + '18');
+    gradient.addColorStop(1, color + '00');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+    const tex = new THREE.CanvasTexture(c);
+    tex.needsUpdate = true;
+    return tex;
+  }
+
+  const redGlowTex = createGlowTexture('#ff4444');
+  const cyanGlowTex = createGlowTexture('#00d4ff');
+  const glowSprites = [];
+
+  for (let i = 0; i < ACCENT_RED_COUNT; i++) {
+    const spriteMat = new THREE.SpriteMaterial({
+      map: redGlowTex,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      opacity: 0.6
+    });
+    const sprite = new THREE.Sprite(spriteMat);
+    sprite.scale.set(28, 28, 1);
+    scene.add(sprite);
+    glowSprites.push({ sprite, index: i });
+  }
+
+  // Add a few cyan glow sprites for larger blue/cyan particles
+  for (let i = ACCENT_RED_COUNT; i < PARTICLE_COUNT; i++) {
+    if (sizes[i] > 4.0) {
+      const spriteMat = new THREE.SpriteMaterial({
+        map: cyanGlowTex,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        opacity: 0.35
+      });
+      const sprite = new THREE.Sprite(spriteMat);
+      sprite.scale.set(22, 22, 1);
+      scene.add(sprite);
+      glowSprites.push({ sprite, index: i });
+    }
+  }
+
+  // ─── CONNECTION LINES ───
+  // Pre-allocate a large buffer for lines (we'll update each frame)
+  const MAX_CONNECTIONS = 3000;
+  const linePositions = new Float32Array(MAX_CONNECTIONS * 6); // 2 vertices * 3 components
+  const lineColors = new Float32Array(MAX_CONNECTIONS * 6);
+
+  const lineGeometry = new THREE.BufferGeometry();
+  lineGeometry.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
+  lineGeometry.setAttribute('color', new THREE.BufferAttribute(lineColors, 3));
+  lineGeometry.setDrawRange(0, 0);
+
+  const lineMaterial = new THREE.LineBasicMaterial({
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.6,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+
+  const lineSystem = new THREE.LineSegments(lineGeometry, lineMaterial);
+  scene.add(lineSystem);
+
+  // ─── MOUSE TRACKING ───
+  const mouse = new THREE.Vector2(9999, 9999);
+  const mouseWorld = new THREE.Vector3();
+  const raycaster = new THREE.Raycaster();
+  // Invisible plane for raycasting
+  const mousePlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+
+  function onMouseMove(e) {
+    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    raycaster.ray.intersectPlane(mousePlane, mouseWorld);
+  }
+
+  function onMouseLeave() {
+    mouse.x = 9999;
+    mouse.y = 9999;
+    mouseWorld.set(9999, 9999, 9999);
+  }
+
+  window.addEventListener('mousemove', onMouseMove, { passive: true });
+  document.addEventListener('mouseleave', onMouseLeave);
+
+  // Touch support
+  window.addEventListener('touchmove', function(e) {
+    if (e.touches.length > 0) {
+      const t = e.touches[0];
+      mouse.x = (t.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(t.clientY / window.innerHeight) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
+      raycaster.ray.intersectPlane(mousePlane, mouseWorld);
+    }
+  }, { passive: true });
+
+  window.addEventListener('touchend', onMouseLeave);
+
+  // ─── SPATIAL HASH for fast neighbor lookups ───
+  const CELL_SIZE = CONNECT_DIST;
+  const spatialHash = new Map();
+
+  function hashKey(x, y, z) {
+    const cx = Math.floor(x / CELL_SIZE);
+    const cy = Math.floor(y / CELL_SIZE);
+    const cz = Math.floor(z / CELL_SIZE);
+    return cx + ',' + cy + ',' + cz;
+  }
+
+  function buildSpatialHash() {
+    spatialHash.clear();
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      const i3 = i * 3;
+      const key = hashKey(positions[i3], positions[i3+1], positions[i3+2]);
+      if (!spatialHash.has(key)) {
+        spatialHash.set(key, []);
+      }
+      spatialHash.get(key).push(i);
+    }
+  }
+
+  function getNeighborIndices(x, y, z) {
+    const results = [];
+    const cx = Math.floor(x / CELL_SIZE);
+    const cy = Math.floor(y / CELL_SIZE);
+    const cz = Math.floor(z / CELL_SIZE);
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dz = -1; dz <= 1; dz++) {
+          const key = (cx+dx) + ',' + (cy+dy) + ',' + (cz+dz);
+          const cell = spatialHash.get(key);
+          if (cell) {
+            for (let k = 0; k < cell.length; k++) {
+              results.push(cell[k]);
+            }
+          }
+        }
+      }
+    }
+    return results;
+  }
+
+  // ─── ANIMATION LOOP ───
+  let time = 0;
+  const tempVec = new THREE.Vector3();
+
+  function animate() {
+    requestAnimationFrame(animate);
+    time += 1;
+
+    const posAttr = particleGeometry.getAttribute('position');
+    const colAttr = particleGeometry.getAttribute('color');
+    const posArr = posAttr.array;
+
+    // Update particle positions (drift + mouse repulsion)
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      const i3 = i * 3;
+
+      // Gentle sinusoidal drift
+      const phase = i * 0.37;
+      posArr[i3]     += velocities[i3]     + Math.sin(time * DRIFT_SPEED + phase) * 0.08;
+      posArr[i3 + 1] += velocities[i3 + 1] + Math.cos(time * DRIFT_SPEED * 1.3 + phase * 0.7) * 0.08;
+      posArr[i3 + 2] += velocities[i3 + 2] + Math.sin(time * DRIFT_SPEED * 0.8 + phase * 1.2) * 0.06;
+
+      // Soft boundary: push back toward center if too far
+      const dist = Math.sqrt(posArr[i3]*posArr[i3] + posArr[i3+1]*posArr[i3+1] + posArr[i3+2]*posArr[i3+2]);
+      if (dist > FIELD_SIZE * 1.1) {
+        const pullback = 0.0008;
+        posArr[i3]     -= posArr[i3] * pullback;
+        posArr[i3 + 1] -= posArr[i3+1] * pullback;
+        posArr[i3 + 2] -= posArr[i3+2] * pullback;
+      }
+
+      // Mouse repulsion
+      if (mouseWorld.x < 5000) {
+        const dx = posArr[i3]     - mouseWorld.x;
+        const dy = posArr[i3 + 1] - mouseWorld.y;
+        const dz = posArr[i3 + 2] - mouseWorld.z;
+        const mouseDist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+        if (mouseDist < MOUSE_RADIUS && mouseDist > 0.1) {
+          const force = (1 - mouseDist / MOUSE_RADIUS) * MOUSE_STRENGTH;
+          const invD = 1 / mouseDist;
+          posArr[i3]     += dx * invD * force * 8;
+          posArr[i3 + 1] += dy * invD * force * 8;
+          posArr[i3 + 2] += dz * invD * force * 4;
+        }
+      }
+
+      // Subtle pulse for red accent particles
+      if (i < ACCENT_RED_COUNT) {
+        const pulse = 0.85 + Math.sin(time * 0.02 + i * 2) * 0.15;
+        colAttr.array[i3]     = colRed.r * pulse;
+        colAttr.array[i3 + 1] = colRed.g * pulse;
+        colAttr.array[i3 + 2] = colRed.b * pulse;
+      }
+    }
+
+    posAttr.needsUpdate = true;
+    colAttr.needsUpdate = true;
+
+    // Update glow sprite positions
+    for (let g = 0; g < glowSprites.length; g++) {
+      const idx = glowSprites[g].index;
+      const i3 = idx * 3;
+      glowSprites[g].sprite.position.set(posArr[i3], posArr[i3+1], posArr[i3+2]);
+    }
+
+    // Build spatial hash and draw connections
+    buildSpatialHash();
+
+    let lineVertexCount = 0;
+    const lp = lineGeometry.getAttribute('position').array;
+    const lc = lineGeometry.getAttribute('color').array;
+    const connectDistSq = CONNECT_DIST * CONNECT_DIST;
+    const seen = new Set();
+
+    for (let i = 0; i < PARTICLE_COUNT && lineVertexCount < MAX_CONNECTIONS * 2; i++) {
+      const i3 = i * 3;
+      const px = posArr[i3], py = posArr[i3+1], pz = posArr[i3+2];
+      const neighbors = getNeighborIndices(px, py, pz);
+
+      for (let n = 0; n < neighbors.length && lineVertexCount < MAX_CONNECTIONS * 2; n++) {
+        const j = neighbors[n];
+        if (j <= i) continue;
+
+        const pairKey = i * PARTICLE_COUNT + j;
+        if (seen.has(pairKey)) continue;
+        seen.add(pairKey);
+
+        const j3 = j * 3;
+        const dx = px - posArr[j3];
+        const dy = py - posArr[j3+1];
+        const dz = pz - posArr[j3+2];
+        const distSq = dx*dx + dy*dy + dz*dz;
+
+        if (distSq < connectDistSq) {
+          const dist = Math.sqrt(distSq);
+          const alpha = 1 - dist / CONNECT_DIST;
+          // Fade based on distance
+          const brightness = alpha * alpha * 0.5;
+
+          // Blend between cyan and blue based on distance
+          const t = dist / CONNECT_DIST;
+          const r = (0.0 * (1-t) + 0.0 * t) * brightness;
+          const g = (0.83 * (1-t) + 0.4 * t) * brightness;
+          const b = (1.0 * (1-t) + 1.0 * t) * brightness;
+
+          const vi = lineVertexCount * 3;
+          lp[vi]     = px;
+          lp[vi + 1] = py;
+          lp[vi + 2] = pz;
+          lc[vi]     = r;
+          lc[vi + 1] = g;
+          lc[vi + 2] = b;
+          lineVertexCount++;
+
+          const vi2 = lineVertexCount * 3;
+          lp[vi2]     = posArr[j3];
+          lp[vi2 + 1] = posArr[j3+1];
+          lp[vi2 + 2] = posArr[j3+2];
+          lc[vi2]     = r;
+          lc[vi2 + 1] = g;
+          lc[vi2 + 2] = b;
+          lineVertexCount++;
+        }
+      }
+    }
+
+    lineGeometry.setDrawRange(0, lineVertexCount);
+    lineGeometry.getAttribute('position').needsUpdate = true;
+    lineGeometry.getAttribute('color').needsUpdate = true;
+
+    // Slow camera orbit for parallax
+    const orbitAngle = time * CAMERA_ORBIT_R;
+    camera.position.x = Math.sin(orbitAngle) * 50;
+    camera.position.y = Math.cos(orbitAngle * 0.7) * 30;
+    camera.lookAt(0, 0, 0);
+
+    renderer.render(scene, camera);
+  }
+
+  animate();
+
+  // ─── RESIZE ───
+  window.addEventListener('resize', function() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    particleMaterial.uniforms.uPixelRatio.value = renderer.getPixelRatio();
+  });
+
+  // ─── CARD INTERACTION ───
+  const cards = document.querySelectorAll('.card');
+  cards.forEach(function(card) {
+    card.addEventListener('click', function() {
+      cards.forEach(function(c) { c.classList.remove('selected'); });
+      card.classList.add('selected');
+    });
+  });
+
+})();
+</script>
+</body>
+</html>
