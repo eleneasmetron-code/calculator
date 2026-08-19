@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Вариант 1: Cyberpunk Neon</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #0a0014;
+  color: #fff;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Animated neon grid */
+.bg-grid {
+  position: fixed;
+  inset: 0;
+  background: 
+    linear-gradient(90deg, rgba(0,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(rgba(0,255,255,0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: gridPulse 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes gridPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.7; }
+}
+
+/* Neon glow orbs */
+.orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  animation: orbFloat 8s ease-in-out infinite;
+}
+
+.orb-1 { width: 400px; height: 400px; background: rgba(0,255,255,0.15); top: -100px; left: -100px; }
+.orb-2 { width: 300px; height: 300px; background: rgba(255,0,255,0.15); bottom: -50px; right: -50px; animation-delay: 2s; }
+.orb-3 { width: 250px; height: 250px; background: rgba(255,255,0,0.1); top: 50%; left: 50%; animation-delay: 4s; }
+
+@keyframes orbFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(30px, -30px) scale(1.1); }
+}
+
+/* Scanline effect */
+.scanline {
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,255,255,0.02) 2px,
+    rgba(0,255,255,0.02) 4px
+  );
+  pointer-events: none;
+  animation: scanMove 10s linear infinite;
+}
+
+@keyframes scanMove {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(100px); }
+}
+
+/* Main container */
+.container {
+  position: relative;
+  z-index: 10;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 60px 24px;
+}
+
+/* Header */
+.header {
+  text-align: center;
+  margin-bottom: 50px;
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  background: rgba(0,255,255,0.1);
+  border: 1px solid rgba(0,255,255,0.3);
+  border-radius: 100px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  color: #0ff;
+  margin-bottom: 30px;
+  text-shadow: 0 0 10px #0ff;
+}
+
+.logo::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: #0ff;
+  border-radius: 50%;
+  box-shadow: 0 0 10px #0ff;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+h1 {
+  font-size: 72px;
+  font-weight: 900;
+  line-height: 1;
+  margin-bottom: 20px;
+  background: linear-gradient(180deg, #fff 0%, #0ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 80px rgba(0,255,255,0.3);
+}
+
+h1 span {
+  display: block;
+  font-size: 32px;
+  background: linear-gradient(90deg, #f0f, #0ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+  font-size: 18px;
+  color: rgba(255,255,255,0.6);
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+/* Card */
+.card {
+  background: rgba(10, 0, 30, 0.8);
+  border: 1px solid rgba(0,255,255,0.2);
+  border-radius: 20px;
+  padding: 40px;
+  backdrop-filter: blur(20px);
+  box-shadow: 
+    0 0 30px rgba(0,255,255,0.1),
+    inset 0 0 30px rgba(0,255,255,0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #0ff, #f0f, transparent);
+  animation: borderGlow 3s linear infinite;
+}
+
+@keyframes borderGlow {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Section title */
+.section-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 24px;
+  color: #0ff;
+  text-shadow: 0 0 20px rgba(0,255,255,0.5);
+}
+
+/* Project type grid */
+.type-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.type-card {
+  padding: 20px;
+  background: rgba(0,255,255,0.05);
+  border: 1px solid rgba(0,255,255,0.2);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.type-card:hover {
+  background: rgba(0,255,255,0.1);
+  border-color: #0ff;
+  transform: translateY(-4px);
+  box-shadow: 0 10px 30px rgba(0,255,255,0.2);
+}
+
+.type-card.selected {
+  background: rgba(0,255,255,0.15);
+  border-color: #0ff;
+  box-shadow: 0 0 20px rgba(0,255,255,0.3);
+}
+
+.type-icon {
+  font-size: 36px;
+  margin-bottom: 10px;
+}
+
+.type-label {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Progress */
+.progress {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 40px;
+}
+
+.progress-dot {
+  width: 40px;
+  height: 4px;
+  background: rgba(0,255,255,0.2);
+  border-radius: 2px;
+}
+
+.progress-dot.active {
+  background: #0ff;
+  box-shadow: 0 0 10px #0ff;
+}
+
+/* Button */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 40px;
+  background: linear-gradient(135deg, #0ff 0%, #f0f 100%);
+  color: #000;
+  font-weight: 700;
+  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 30px rgba(0,255,255,0.3);
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 40px rgba(0,255,255,0.5);
+}
+
+.btn-nav {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 40px;
+}
+
+.btn-back {
+  padding: 16px 32px;
+  background: transparent;
+  border: 1px solid rgba(0,255,255,0.3);
+  color: #0ff;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.btn-back:hover {
+  background: rgba(0,255,255,0.1);
+  border-color: #0ff;
+}
+
+/* Stats preview */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 40px;
+}
+
+.stat {
+  text-align: center;
+  padding: 20px;
+  background: rgba(0,255,255,0.05);
+  border: 1px solid rgba(0,255,255,0.2);
+  border-radius: 12px;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 900;
+  color: #0ff;
+  text-shadow: 0 0 20px #0ff;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+  margin-top: 4px;
+}
+
+/* Footer */
+.footer {
+  text-align: center;
+  margin-top: 60px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.3);
+}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="scanline"></div>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<div class="container">
+  <header class="header">
+    <div class="logo">AI Estimation System</div>
+    <h1>CALC<span>Стоимость проекта</span></h1>
+    <p class="subtitle">Нейросеть анализирует требования и рассчитывает бюджет за секунды</p>
+  </header>
+
+  <div class="progress">
+    <div class="progress-dot active"></div>
+    <div class="progress-dot"></div>
+    <div class="progress-dot"></div>
+    <div class="progress-dot"></div>
+  </div>
+
+  <div class="card">
+    <h2 class="section-title">// SELECT_TYPE</h2>
+    <div class="type-grid">
+      <div class="type-card selected">
+        <div class="type-icon">🌐</div>
+        <div class="type-label">Лендинг</div>
+      </div>
+      <div class="type-card">
+        <div class="type-icon">🏢</div>
+        <div class="type-label">Корпоративный</div>
+      </div>
+      <div class="type-card">
+        <div class="type-icon">🛒</div>
+        <div class="type-label">Магазин</div>
+      </div>
+      <div class="type-card">
+        <div class="type-icon">💻</div>
+        <div class="type-label">SaaS</div>
+      </div>
+      <div class="type-card">
+        <div class="type-icon">📱</div>
+        <div class="type-label">Мобайл</div>
+      </div>
+      <div class="type-card">
+        <div class="type-icon">🤖</div>
+        <div class="type-label">Telegram</div>
+      </div>
+      <div class="type-card">
+        <div class="type-icon">📊</div>
+        <div class="type-label">CRM</div>
+      </div>
+      <div class="type-card">
+        <div class="type-icon">⚙️</div>
+        <div class="type-label">API</div>
+      </div>
+    </div>
+
+    <div class="btn-nav">
+      <button class="btn-back">← BACK</button>
+      <button class="btn">NEXT →</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-value">2500+</div>
+      <div class="stat-label">Проектов оценено</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">94%</div>
+      <div class="stat-label">Точность оценки</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">&lt;10s</div>
+      <div class="stat-label">Время расчёта</div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    NEURAL ENGINE v2.0 • Powered by OpenRouter AI • 2026
+  </footer>
+</div>
+</body>
+</html>

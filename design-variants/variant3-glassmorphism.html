@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Вариант 3: Glassmorphism Dark</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #080810;
+  color: #fff;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Animated mesh gradient */
+.mesh-bg {
+  position: fixed;
+  inset: 0;
+  background: 
+    radial-gradient(at 20% 20%, rgba(99, 102, 241, 0.25) 0%, transparent 50%),
+    radial-gradient(at 80% 10%, rgba(168, 85, 247, 0.2) 0%, transparent 40%),
+    radial-gradient(at 40% 80%, rgba(236, 72, 153, 0.15) 0%, transparent 50%),
+    radial-gradient(at 90% 70%, rgba(59, 130, 246, 0.2) 0%, transparent 40%);
+  animation: meshMove 15s ease-in-out infinite;
+}
+
+@keyframes meshMove {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.05) rotate(2deg); }
+}
+
+/* Floating shapes */
+.shape {
+  position: fixed;
+  border-radius: 50%;
+  backdrop-filter: blur(40px);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.shape-1 {
+  width: 200px;
+  height: 200px;
+  background: rgba(99, 102, 241, 0.1);
+  top: 10%;
+  right: 15%;
+  animation: shapeFloat 8s ease-in-out infinite;
+}
+
+.shape-2 {
+  width: 150px;
+  height: 150px;
+  background: rgba(236, 72, 153, 0.1);
+  bottom: 20%;
+  left: 10%;
+  animation: shapeFloat 10s ease-in-out infinite reverse;
+}
+
+@keyframes shapeFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-30px) rotate(10deg); }
+}
+
+/* Noise texture overlay */
+.noise {
+  position: fixed;
+  inset: 0;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+.container {
+  position: relative;
+  z-index: 10;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 60px 24px;
+}
+
+/* Header */
+.header {
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 100px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.7);
+  margin-bottom: 24px;
+  backdrop-filter: blur(10px);
+}
+
+.chip-dot {
+  width: 6px;
+  height: 6px;
+  background: #10b981;
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+h1 {
+  font-size: 56px;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #fff 0%, #a78bfa 50%, #f472b6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+  font-size: 18px;
+  color: rgba(255,255,255,0.5);
+  max-width: 480px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* Glass card */
+.glass-card {
+  background: rgba(255,255,255,0.03);
+  backdrop-filter: blur(40px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 32px;
+  padding: 48px;
+  box-shadow: 
+    0 0 0 1px rgba(255,255,255,0.05) inset,
+    0 40px 80px -20px rgba(0,0,0,0.5);
+}
+
+.section-header {
+  margin-bottom: 32px;
+}
+
+.section-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.section-desc {
+  font-size: 14px;
+  color: rgba(255,255,255,0.4);
+}
+
+/* Progress dots */
+.progress-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 40px;
+}
+
+.dot {
+  width: 32px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.1);
+  transition: all 0.3s;
+}
+
+.dot.active {
+  width: 48px;
+  background: linear-gradient(90deg, #6366f1, #a855f7);
+}
+
+/* Type grid */
+.type-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.type-item {
+  padding: 24px 16px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.type-item:hover {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.15);
+  transform: translateY(-4px);
+}
+
+.type-item.selected {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 30px rgba(99, 102, 241, 0.2);
+}
+
+.type-icon {
+  font-size: 36px;
+  margin-bottom: 12px;
+}
+
+.type-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.8);
+}
+
+/* Navigation */
+.nav-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 40px;
+}
+
+.btn-back {
+  padding: 14px 24px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.6);
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.btn-back:hover {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+
+.btn-next {
+  padding: 14px 32px;
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+  color: #fff;
+  font-weight: 600;
+  font-size: 15px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
+}
+
+.btn-next:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(99, 102, 241, 0.4);
+}
+
+/* Stats */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 40px;
+}
+
+.stat-card {
+  padding: 24px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 20px;
+  text-align: center;
+  backdrop-filter: blur(20px);
+}
+
+.stat-num {
+  font-size: 28px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #a78bfa, #f472b6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 4px;
+}
+
+.stat-text {
+  font-size: 12px;
+  color: rgba(255,255,255,0.4);
+}
+</style>
+</head>
+<body>
+<div class="mesh-bg"></div>
+<div class="noise"></div>
+<div class="shape shape-1"></div>
+<div class="shape shape-2"></div>
+
+<div class="container">
+  <header class="header">
+    <div class="chip">
+      <span class="chip-dot"></span>
+      AI Estimation Engine
+    </div>
+    <h1>Калькулятор<br>стоимости проекта</h1>
+    <p class="subtitle">Искусственный интеллект анализирует ваше ТЗ и рассчитывает бюджет с точностью до 94%</p>
+  </header>
+
+  <div class="progress-dots">
+    <div class="dot active"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+  </div>
+
+  <div class="glass-card">
+    <div class="section-header">
+      <h2 class="section-title">Тип проекта</h2>
+      <p class="section-desc">Выберите наиболее подходящую категорию</p>
+    </div>
+
+    <div class="type-grid">
+      <div class="type-item selected">
+        <div class="type-icon">🌐</div>
+        <div class="type-label">Лендинг</div>
+      </div>
+      <div class="type-item">
+        <div class="type-icon">🏢</div>
+        <div class="type-label">Корпоративный</div>
+      </div>
+      <div class="type-item">
+        <div class="type-icon">🛒</div>
+        <div class="type-label">E-commerce</div>
+      </div>
+      <div class="type-item">
+        <div class="type-icon">💻</div>
+        <div class="type-label">Web App</div>
+      </div>
+      <div class="type-item">
+        <div class="type-icon">📱</div>
+        <div class="type-label">Mobile</div>
+      </div>
+      <div class="type-item">
+        <div class="type-icon">🤖</div>
+        <div class="type-label">Бот</div>
+      </div>
+      <div class="type-item">
+        <div class="type-icon">📊</div>
+        <div class="type-label">Dashboard</div>
+      </div>
+      <div class="type-item">
+        <div class="type-icon">⚙️</div>
+        <div class="type-label">API</div>
+      </div>
+    </div>
+
+    <div class="nav-row">
+      <button class="btn-back">← Назад</button>
+      <button class="btn-next">Продолжить →</button>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-num">2,500+</div>
+      <div class="stat-text">Проектов оценено</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">94%</div>
+      <div class="stat-text">Точность оценки</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">&lt;10 сек</div>
+      <div class="stat-text">Время расчёта</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

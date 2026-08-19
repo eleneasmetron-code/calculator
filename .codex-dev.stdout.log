@@ -1,0 +1,14 @@
+
+> calculator@0.1.0 dev
+> next dev --hostname 127.0.0.1 --port 3000
+
+▲ Next.js 16.2.9 (Turbopack)
+- Local:         http://127.0.0.1:3000
+- Network:       http://127.0.0.1:3000
+- Environments: .env.local
+✓ Ready in 2.4s
+Creating turbopack project { dir: 'E:\\PROJECTS\\1 - CalCulator', testMode: true }
+
+ GET / 500 in 1543ms (next.js: 1077ms, application-code: 466ms)
+ GET / 500 in 382ms (next.js: 344ms, application-code: 38ms)
+[?25h

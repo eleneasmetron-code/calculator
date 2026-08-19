@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Оценка проекта</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Karla:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    background: #030712;
+    color: #f8fafc;
+    font-family: 'Karla', sans-serif;
+    font-weight: 400;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  #three-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+  }
+
+  .vignette {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+    pointer-events: none;
+    background: radial-gradient(
+      ellipse at center,
+      transparent 30%,
+      rgba(3, 7, 18, 0.4) 60%,
+      rgba(3, 7, 18, 0.85) 100%
+    );
+  }
+
+  .ui-layer {
+    position: relative;
+    z-index: 10;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 40px;
+  }
+
+  .panel {
+    width: 60%;
+    max-width: 880px;
+    min-height: 80vh;
+    background: rgba(3, 7, 18, 0.7);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-radius: 20px;
+    border: 1px solid rgba(6, 182, 212, 0.15);
+    padding: 48px 44px;
+    display: flex;
+    flex-direction: column;
+    box-shadow:
+      0 0 80px rgba(6, 182, 212, 0.04),
+      0 32px 64px rgba(0, 0, 0, 0.4);
+  }
+
+  .panel-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 48px;
+    line-height: 1.1;
+    color: #f8fafc;
+    margin-bottom: 12px;
+    letter-spacing: -0.02em;
+  }
+
+  .panel-desc {
+    font-family: 'Karla', sans-serif;
+    font-weight: 400;
+    font-size: 17px;
+    color: #06b6d4;
+    margin-bottom: 36px;
+    opacity: 0.85;
+  }
+
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: auto;
+  }
+
+  .card {
+    background: rgba(3, 7, 18, 0.55);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(6, 182, 212, 0.1);
+    border-radius: 16px;
+    padding: 22px 16px 18px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    position: relative;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card:hover {
+    border-color: rgba(6, 182, 212, 0.45);
+    box-shadow: 0 0 24px rgba(6, 182, 212, 0.12), 0 8px 24px rgba(0,0,0,0.3);
+    transform: translateY(-4px);
+  }
+
+  .card.selected {
+    border: 2px solid transparent;
+    background-image: linear-gradient(rgba(3,7,18,0.6), rgba(3,7,18,0.6)),
+                       linear-gradient(135deg, #2563eb, #06b6d4);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    box-shadow: 0 0 32px rgba(37, 99, 235, 0.2), 0 8px 24px rgba(0,0,0,0.3);
+    transform: translateY(-4px);
+  }
+
+  .card-number {
+    font-family: 'Karla', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(6, 182, 212, 0.4);
+    letter-spacing: 0.08em;
+    position: absolute;
+    top: 8px;
+    left: 12px;
+  }
+
+  .card-emoji {
+    font-size: 40px;
+    line-height: 1;
+    margin-bottom: 2px;
+  }
+
+  .card-label {
+    font-family: 'Karla', sans-serif;
+    font-weight: 500;
+    font-size: 14px;
+    color: #f8fafc;
+    opacity: 0.9;
+  }
+
+  .panel-footer {
+    margin-top: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .progress-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .progress-track {
+    flex: 1;
+    height: 3px;
+    background: rgba(248, 250, 252, 0.08);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    width: 25%;
+    height: 100%;
+    background: linear-gradient(90deg, #2563eb, #06b6d4);
+    border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+
+  .step-counter {
+    font-family: 'Karla', sans-serif;
+    font-weight: 500;
+    font-size: 13px;
+    color: rgba(248, 250, 252, 0.4);
+    white-space: nowrap;
+    letter-spacing: 0.05em;
+  }
+
+  .btn-continue {
+    align-self: flex-end;
+    font-family: 'Karla', sans-serif;
+    font-weight: 500;
+    font-size: 16px;
+    color: #f8fafc;
+    background: #2563eb;
+    border: none;
+    border-radius: 14px;
+    padding: 14px 40px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    letter-spacing: 0.01em;
+  }
+
+  .btn-continue:hover {
+    background: #3b82f6;
+    box-shadow: 0 0 28px rgba(37, 99, 235, 0.4), 0 8px 20px rgba(0,0,0,0.3);
+    transform: translateY(-2px);
+  }
+
+  .btn-continue:active {
+    transform: translateY(0);
+  }
+
+  @media (max-width: 1200px) {
+    .panel {
+      width: 70%;
+    }
+    .panel-title {
+      font-size: 40px;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .ui-layer {
+      justify-content: center;
+      padding: 24px;
+    }
+    .panel {
+      width: 100%;
+      max-width: 100%;
+      min-height: auto;
+      padding: 32px 24px;
+    }
+    .panel-title {
+      font-size: 32px;
+    }
+    .cards-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .cards-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    .card {
+      padding: 16px 10px 14px;
+    }
+    .card-emoji {
+      font-size: 32px;
+    }
+    .panel-title {
+      font-size: 28px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="three-canvas"></canvas>
+<div class="vignette"></div>
+
+<div class="ui-layer">
+  <div class="panel">
+    <h1 class="panel-title">Оценка проекта</h1>
+    <p class="panel-desc">Выберите тип проекта для начала расчёта</p>
+
+    <div class="cards-grid">
+      <div class="card" onclick="selectCard(this)">
+        <span class="card-number">01</span>
+        <span class="card-emoji">🌐</span>
+        <span class="card-label">Лендинг</span>
+      </div>
+      <div class="card" onclick="selectCard(this)">
+        <span class="card-number">02</span>
+        <span class="card-emoji">🏢</span>
+        <span class="card-label">Корпоративный</span>
+      </div>
+      <div class="card" onclick="selectCard(this)">
+        <span class="card-number">03</span>
+        <span class="card-emoji">🛒</span>
+        <span class="card-label">Магазин</span>
+      </div>
+      <div class="card" onclick="selectCard(this)">
+        <span class="card-number">04</span>
+        <span class="card-emoji">💻</span>
+        <span class="card-label">Веб-приложение</span>
+      </div>
+      <div class="card" onclick="selectCard(this)">
+        <span class="card-number">05</span>
+        <span class="card-emoji">📱</span>
+        <span class="card-label">Мобайл</span>
+      </div>
+      <div class="card" onclick="selectCard(this)">
+        <span class="card-number">06</span>
+        <span class="card-emoji">🤖</span>
+        <span class="card-label">Бот</span>
+      </div>
+      <div class="card" onclick="selectCard(this)">
+        <span class="card-number">07</span>
+        <span class="card-emoji">📊</span>
+        <span class="card-label">CRM</span>
+      </div>
+      <div class="card" onclick="selectCard(this)">
+        <span class="card-number">08</span>
+        <span class="card-emoji">⚙️</span>
+        <span class="card-label">Backend</span>
+      </div>
+      <div class="card" onclick="selectCard(this)">
+        <span class="card-number">09</span>
+        <span class="card-emoji">✨</span>
+        <span class="card-label">Другое</span>
+      </div>
+    </div>
+
+    <div class="panel-footer">
+      <div class="progress-row">
+        <div class="progress-track">
+          <div class="progress-fill"></div>
+        </div>
+        <span class="step-counter">1 / 4</span>
+      </div>
+      <button class="btn-continue">Продолжить</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ── Scene Setup ── */
+  const canvas = document.getElementById('three-canvas');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x030712, 1);
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x030712, 0.035);
+
+  const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+  camera.position.set(0, 0, 10);
+
+  /* ── Mouse Tracking ── */
+  const mouse = { x: 0, y: 0, targetX: 0, targetY: 0 };
+  document.addEventListener('mousemove', function (e) {
+    mouse.targetX = (e.clientX / window.innerWidth - 0.5) * 2;
+    mouse.targetY = (e.clientY / window.innerHeight - 0.5) * 2;
+  });
+
+  /* ── Central Wireframe Icosahedron ── */
+  const icoGeo = new THREE.IcosahedronGeometry(3, 1);
+
+  const icoWireframeMat = new THREE.MeshBasicMaterial({
+    color: 0x06b6d4,
+    wireframe: true,
+    transparent: true,
+    opacity: 0.3
+  });
+  const icoMesh = new THREE.Mesh(icoGeo, icoWireframeMat);
+  scene.add(icoMesh);
+
+  /* Edge glow lines */
+  const edgesGeo = new THREE.EdgesGeometry(icoGeo);
+  const edgesMat = new THREE.LineBasicMaterial({
+    color: 0x06b6d4,
+    transparent: true,
+    opacity: 0.5
+  });
+  const edgeLines = new THREE.LineSegments(edgesGeo, edgesMat);
+  icoMesh.add(edgeLines);
+
+  /* ── Orbiting Smaller Shapes ── */
+  const orbiters = [];
+  const orbitConfigs = [
+    { geo: new THREE.OctahedronGeometry(0.4, 0), color: 0x2563eb, dist: 5.5, speed: 0.3, phase: 0, yOff: 0.5 },
+    { geo: new THREE.TetrahedronGeometry(0.35, 0), color: 0x06b6d4, dist: 6.2, speed: 0.22, phase: 1.2, yOff: -0.8 },
+    { geo: new THREE.BoxGeometry(0.5, 0.5, 0.5), color: 0xf8fafc, dist: 5.0, speed: 0.4, phase: 2.5, yOff: 1.2 },
+    { geo: new THREE.OctahedronGeometry(0.3, 0), color: 0xef4444, dist: 7.0, speed: 0.18, phase: 3.8, yOff: -0.3 },
+    { geo: new THREE.TetrahedronGeometry(0.45, 0), color: 0x2563eb, dist: 4.5, speed: 0.35, phase: 5.0, yOff: 0.9 },
+    { geo: new THREE.BoxGeometry(0.3, 0.3, 0.3), color: 0x06b6d4, dist: 6.8, speed: 0.28, phase: 0.7, yOff: -1.5 },
+    { geo: new THREE.OctahedronGeometry(0.25, 0), color: 0xf8fafc, dist: 5.8, speed: 0.32, phase: 4.2, yOff: 0.2 }
+  ];
+
+  orbitConfigs.forEach(function (cfg) {
+    var mat = new THREE.MeshBasicMaterial({
+      color: cfg.color,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.45
+    });
+    var mesh = new THREE.Mesh(cfg.geo, mat);
+    scene.add(mesh);
+    orbiters.push({ mesh: mesh, cfg: cfg });
+  });
+
+  /* ── Point Lights ── */
+  var lightDefs = [
+    { color: 0x2563eb, intensity: 2.5, dist: 8, speed: 0.15, phase: 0, yAmp: 2 },
+    { color: 0x06b6d4, intensity: 2.0, dist: 9, speed: 0.1, phase: 1.5, yAmp: 1.5 },
+    { color: 0xf8fafc, intensity: 1.5, dist: 7, speed: 0.2, phase: 3.0, yAmp: 3 },
+    { color: 0xef4444, intensity: 1.8, dist: 10, speed: 0.12, phase: 4.5, yAmp: 1 }
+  ];
+
+  var pointLights = [];
+  lightDefs.forEach(function (ld) {
+    var pl = new THREE.PointLight(ld.color, ld.intensity, 30);
+    scene.add(pl);
+    pointLights.push({ light: pl, cfg: ld });
+
+    /* Glow sprite for each light */
+    var spriteMat = new THREE.SpriteMaterial({
+      color: ld.color,
+      transparent: true,
+      opacity: 0.35,
+      blending: THREE.AdditiveBlending
+    });
+    var sprite = new THREE.Sprite(spriteMat);
+    sprite.scale.set(1.2, 1.2, 1);
+    pl.add(sprite);
+  });
+
+  /* Ambient fill */
+  scene.add(new THREE.AmbientLight(0x111827, 0.5));
+
+  /* ── Background Particles ── */
+  var particleCount = 200;
+  var particlePositions = new Float32Array(particleCount * 3);
+  var particleColors = new Float32Array(particleCount * 3);
+  var particleVelocities = [];
+
+  var cyanColor = new THREE.Color(0x06b6d4);
+  var whiteColor = new THREE.Color(0xf8fafc);
+
+  for (var i = 0; i < particleCount; i++) {
+    particlePositions[i * 3]     = (Math.random() - 0.5) * 40;
+    particlePositions[i * 3 + 1] = (Math.random() - 0.5) * 40;
+    particlePositions[i * 3 + 2] = (Math.random() - 0.5) * 40;
+
+    var c = Math.random() > 0.5 ? cyanColor : whiteColor;
+    particleColors[i * 3]     = c.r;
+    particleColors[i * 3 + 1] = c.g;
+    particleColors[i * 3 + 2] = c.b;
+
+    particleVelocities.push({
+      x: (Math.random() - 0.5) * 0.005,
+      y: (Math.random() - 0.5) * 0.005,
+      z: (Math.random() - 0.5) * 0.005,
+      twinkleSpeed: 0.5 + Math.random() * 2,
+      twinklePhase: Math.random() * Math.PI * 2
+    });
+  }
+
+  var particleGeo = new THREE.BufferGeometry();
+  particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+  particleGeo.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
+
+  var particleMat = new THREE.PointsMaterial({
+    size: 2,
+    sizeAttenuation: false,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.7,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+
+  var particles = new THREE.Points(particleGeo, particleMat);
+  scene.add(particles);
+
+  /* ── Animation Loop ── */
+  var clock = new THREE.Clock();
+  var cameraAngle = 0;
+
+  function animate() {
+    requestAnimationFrame(animate);
+    var t = clock.getElapsedTime();
+    var dt = clock.getDelta();
+
+    /* Smooth mouse interpolation */
+    mouse.x += (mouse.targetX - mouse.x) * 0.03;
+    mouse.y += (mouse.targetY - mouse.y) * 0.03;
+
+    /* Central icosahedron rotation */
+    icoMesh.rotation.x = t * 0.08 + mouse.y * 0.15;
+    icoMesh.rotation.y = t * 0.12 + mouse.x * 0.15;
+    icoMesh.rotation.z = t * 0.05;
+
+    /* Edge glow pulse */
+    edgesMat.opacity = 0.35 + Math.sin(t * 0.8) * 0.15;
+
+    /* Orbiting shapes */
+    orbiters.forEach(function (o) {
+      var angle = t * o.cfg.speed + o.cfg.phase;
+      o.mesh.position.x = Math.cos(angle) * o.cfg.dist;
+      o.mesh.position.z = Math.sin(angle) * o.cfg.dist;
+      o.mesh.position.y = o.cfg.yOff + Math.sin(t * 0.5 + o.cfg.phase) * 0.5;
+      o.mesh.rotation.x = t * 0.4;
+      o.mesh.rotation.y = t * 0.6;
+    });
+
+    /* Point lights orbit */
+    pointLights.forEach(function (pl) {
+      var angle = t * pl.cfg.speed + pl.cfg.phase;
+      pl.light.position.x = Math.cos(angle) * pl.cfg.dist;
+      pl.light.position.z = Math.sin(angle) * pl.cfg.dist;
+      pl.light.position.y = Math.sin(t * 0.3 + pl.cfg.phase) * pl.cfg.yAmp;
+    });
+
+    /* Particles drift + twinkle */
+    var positions = particleGeo.attributes.position.array;
+    for (var i = 0; i < particleCount; i++) {
+      var v = particleVelocities[i];
+      positions[i * 3]     += v.x;
+      positions[i * 3 + 1] += v.y;
+      positions[i * 3 + 2] += v.z;
+
+      /* Wrap around */
+      if (Math.abs(positions[i * 3]) > 20)     positions[i * 3]     *= -0.95;
+      if (Math.abs(positions[i * 3 + 1]) > 20) positions[i * 3 + 1] *= -0.95;
+      if (Math.abs(positions[i * 3 + 2]) > 20) positions[i * 3 + 2] *= -0.95;
+    }
+    particleGeo.attributes.position.needsUpdate = true;
+
+    /* Particle twinkle via material opacity */
+    particleMat.opacity = 0.55 + Math.sin(t * 1.2) * 0.15;
+
+    /* Camera slow auto-orbit + mouse influence */
+    cameraAngle += 0.0008;
+    var camRadius = 10;
+    camera.position.x = Math.sin(cameraAngle + mouse.x * 0.3) * camRadius;
+    camera.position.z = Math.cos(cameraAngle + mouse.x * 0.3) * camRadius;
+    camera.position.y = mouse.y * -1.5 + Math.sin(t * 0.15) * 0.5;
+    camera.lookAt(0, 0, 0);
+
+    renderer.render(scene, camera);
+  }
+
+  animate();
+
+  /* ── Resize Handler ── */
+  window.addEventListener('resize', function () {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+})();
+
+/* ── UI Card Selection ── */
+function selectCard(el) {
+  document.querySelectorAll('.card').forEach(function (c) {
+    c.classList.remove('selected');
+  });
+  el.classList.add('selected');
+}
+</script>
+</body>
+</html>
