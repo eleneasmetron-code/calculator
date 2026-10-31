@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CALC // Система оценки стоимости</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #080808;
+  --cyan: #30b8ff;
+  --cyan-dim: rgba(48, 184, 255, 0.15);
+  --cyan-glow: rgba(48, 184, 255, 0.4);
+  --text: #F0EDE8;
+  --text-dim: rgba(240, 237, 232, 0.45);
+  --text-mid: rgba(240, 237, 232, 0.7);
+  --glass: rgba(12, 12, 12, 0.85);
+  --border: rgba(48, 184, 255, 0.2);
+  --mono: 'JetBrains Mono', monospace;
+  --display: 'Syne', sans-serif;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+}
+
+/* === LOADING BAR === */
+#loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0%;
+  height: 2px;
+  background: var(--cyan);
+  box-shadow: 0 0 20px var(--cyan), 0 0 60px var(--cyan-glow);
+  z-index: 9999;
+  transition: none;
+}
+#loader.done {
+  opacity: 0;
+  transition: opacity 0.4s ease 0.2s;
+}
+
+/* === PAGE WRAPPER === */
+#page {
+  opacity: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: opacity 0.6s ease;
+}
+#page.visible {
+  opacity: 1;
+}
+
+/* === NOISE OVERLAY === */
+#page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.5;
+}
+
+/* === SCANLINES === */
+#page::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 4px
+  );
+  pointer-events: none;
+  z-index: 999;
+}
+
+/* === ANIMATED GRADIENT BLOB === */
+.blob {
+  position: fixed;
+  width: 800px;
+  height: 800px;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.12;
+  pointer-events: none;
+  z-index: 0;
+  animation: blobDrift 20s ease-in-out infinite;
+}
+.blob--1 {
+  background: radial-gradient(circle, var(--cyan) 0%, transparent 70%);
+  top: -200px;
+  right: -200px;
+}
+.blob--2 {
+  background: radial-gradient(circle, #6e3aff 0%, transparent 70%);
+  bottom: -300px;
+  left: -200px;
+  width: 600px;
+  height: 600px;
+  opacity: 0.07;
+  animation: blobDrift2 25s ease-in-out infinite;
+}
+
+@keyframes blobDrift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(-80px, 60px) scale(1.1); }
+  50% { transform: translate(-40px, 120px) scale(0.95); }
+  75% { transform: translate(60px, 40px) scale(1.05); }
+}
+@keyframes blobDrift2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(100px, -60px) scale(1.15); }
+  66% { transform: translate(50px, -100px) scale(0.9); }
+}
+
+/* === HEADER === */
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  z-index: 100;
+  border-bottom: 1px solid rgba(48, 184, 255, 0.08);
+  backdrop-filter: blur(12px);
+  background: rgba(8, 8, 8, 0.7);
+}
+.header__logo {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 2px;
+  color: var(--cyan);
+}
+.header__logo span {
+  color: var(--text-dim);
+}
+.header__time {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-mid);
+  letter-spacing: 1px;
+}
+.header__time .blink {
+  animation: blink 1s step-end infinite;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* === MAIN CONTENT === */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 56px 32px 48px;
+  position: relative;
+  z-index: 1;
+}
+
+/* === HERO === */
+.hero {
+  text-align: center;
+  margin-bottom: 40px;
+  position: relative;
+}
+.hero__title {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(80px, 12vw, 160px);
+  line-height: 0.9;
+  letter-spacing: -3px;
+  color: var(--text);
+  position: relative;
+  display: inline-block;
+}
+.hero__title::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: var(--cyan);
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: lineReveal 1s cubic-bezier(0.22, 1, 0.36, 1) 1.2s forwards;
+}
+@keyframes lineReveal {
+  to { transform: scaleX(1); }
+}
+.hero__sub {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-dim);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-top: 16px;
+}
+.hero__sub .cursor {
+  display: inline-block;
+  width: 8px;
+  height: 15px;
+  background: var(--cyan);
+  margin-left: 4px;
+  vertical-align: middle;
+  animation: blink 1s step-end infinite;
+}
+
+/* === CALCULATOR CARD === */
+.calc-card {
+  width: 100%;
+  max-width: 720px;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 32px;
+  position: relative;
+  backdrop-filter: blur(16px);
+}
+.calc-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--cyan);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.calc-card:hover::before {
+  opacity: 1;
+}
+.calc-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(48, 184, 255, 0.08);
+}
+.calc-card__step {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cyan);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.calc-card__status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.calc-card__status .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+  50% { opacity: 0.7; box-shadow: 0 0 0 4px rgba(34, 197, 94, 0); }
+}
+
+.calc-card__prompt {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-mid);
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+.calc-card__prompt span {
+  color: var(--cyan);
+}
+
+/* === PROJECT TYPE OPTIONS === */
+.options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.option {
+  position: relative;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(48, 184, 255, 0.1);
+  border-radius: 3px;
+  padding: 20px 16px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  overflow: hidden;
+}
+.option::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  transition: left 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.option:hover::before {
+  left: 100%;
+}
+.option::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--cyan-dim), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.option:hover::after {
+  opacity: 1;
+}
+.option:hover {
+  border-color: var(--cyan-glow);
+  transform: translateY(-1px);
+}
+.option.selected {
+  border-color: var(--cyan);
+  background: rgba(48, 184, 255, 0.06);
+}
+.option.selected::after {
+  opacity: 1;
+}
+.option__icon {
+  font-size: 22px;
+  margin-bottom: 10px;
+  position: relative;
+  z-index: 1;
+  filter: grayscale(0.3);
+}
+.option__label {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  position: relative;
+  z-index: 1;
+  margin-bottom: 4px;
+}
+.option__desc {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+  position: relative;
+  z-index: 1;
+}
+.option__index {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(48, 184, 255, 0.25);
+  z-index: 1;
+}
+
+/* === BOTTOM MARQUEE === */
+.marquee {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 36px;
+  border-top: 1px solid rgba(48, 184, 255, 0.08);
+  background: rgba(8, 8, 8, 0.9);
+  overflow: hidden;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+}
+.marquee__track {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  animation: marqueeScroll 30s linear infinite;
+}
+.marquee__text {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding-right: 60px;
+}
+.marquee__text .sep {
+  color: var(--cyan);
+  margin: 0 16px;
+  opacity: 0.5;
+}
+@keyframes marqueeScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* === RIGHT SIDE HUD === */
+.hud-right {
+  position: fixed;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 20px;
+}
+.hud-right__version {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+}
+.hud-right__indicators {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+.hud-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.hud-indicator .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+.hud-indicator .dot--green { background: #22c55e; }
+.hud-indicator .dot--cyan { background: var(--cyan); animation: pulse 3s ease-in-out infinite; }
+.hud-indicator .dot--amber { background: #f59e0b; animation: pulse 4s ease-in-out infinite 1s; }
+
+/* === LEFT SIDE HUD === */
+.hud-left {
+  position: fixed;
+  left: 24px;
+  bottom: 56px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.hud-left__line {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 400;
+  color: rgba(240, 237, 232, 0.2);
+  letter-spacing: 1px;
+}
+.hud-left__line span {
+  color: rgba(48, 184, 255, 0.3);
+}
+
+/* === CURSOR POSITION HUD === */
+.hud-cursor {
+  position: fixed;
+  left: 24px;
+  top: 70px;
+  z-index: 50;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 400;
+  color: rgba(240, 237, 232, 0.15);
+  letter-spacing: 1px;
+}
+
+/* === NAV DOTS (step indicator) === */
+.steps {
+  display: flex;
+  gap: 8px;
+  margin-top: 24px;
+  align-items: center;
+}
+.steps__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  transition: all 0.3s ease;
+}
+.steps__dot--active {
+  background: var(--cyan);
+  border-color: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan-glow);
+}
+.steps__label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  margin-left: 8px;
+}
+
+/* === FOOTER AREA === */
+.footer-info {
+  position: fixed;
+  bottom: 44px;
+  right: 32px;
+  z-index: 50;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  text-align: right;
+  line-height: 1.8;
+}
+
+/* === SELECTION FEEDBACK === */
+.option__check {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+.option.selected .option__check {
+  border-color: var(--cyan);
+  background: var(--cyan);
+}
+.option.selected .option__check::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: var(--bg);
+  border-radius: 50%;
+}
+
+/* === SUBTLE GRID OVERLAY === */
+.grid-overlay {
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(48, 184, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(48, 184, 255, 0.015) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* === MICRO ANIMATIONS === */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.anim-fade-up {
+  animation: fadeUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  opacity: 0;
+}
+.anim-delay-1 { animation-delay: 0.8s; }
+.anim-delay-2 { animation-delay: 1.0s; }
+.anim-delay-3 { animation-delay: 1.2s; }
+.anim-delay-4 { animation-delay: 1.4s; }
+.anim-delay-5 { animation-delay: 1.6s; }
+</style>
+</head>
+<body>
+
+<!-- Loading bar -->
+<div id="loader"></div>
+
+<!-- Background effects -->
+<div class="blob blob--1"></div>
+<div class="blob blob--2"></div>
+<div class="grid-overlay"></div>
+
+<!-- Page wrapper -->
+<div id="page">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header__logo">CALC<span>//</span></div>
+    <div class="header__time" id="liveTime"></div>
+  </header>
+
+  <!-- Cursor HUD -->
+  <div class="hud-cursor" id="cursorPos">X:0000 Y:0000</div>
+
+  <!-- Main content -->
+  <main class="main">
+    <section class="hero anim-fade-up anim-delay-1">
+      <h1 class="hero__title">ОЦЕНКА</h1>
+      <p class="hero__sub">Система расчёта стоимости проекта<span class="cursor"></span></p>
+    </section>
+
+    <div class="calc-card anim-fade-up anim-delay-2">
+      <div class="calc-card__header">
+        <span class="calc-card__step">Шаг 01 / 04</span>
+        <span class="calc-card__status">
+          <span class="dot"></span>
+          система активна
+        </span>
+      </div>
+
+      <div class="calc-card__prompt">
+        <span>&gt;</span> Выберите тип проекта для начала расчёта_
+      </div>
+
+      <div class="options">
+        <div class="option anim-fade-up anim-delay-3" data-type="web" onclick="selectOption(this)">
+          <span class="option__index">01</span>
+          <div class="option__icon">&#9783;</div>
+          <div class="option__label">Веб-сайт</div>
+          <div class="option__desc">Лендинг, корпоративный, портал</div>
+          <div class="option__check"></div>
+        </div>
+
+        <div class="option anim-fade-up anim-delay-3" data-type="app" onclick="selectOption(this)">
+          <span class="option__index">02</span>
+          <div class="option__icon">&#9883;</div>
+          <div class="option__label">Приложение</div>
+          <div class="option__desc">Мобильное или десктоп</div>
+          <div class="option__check"></div>
+        </div>
+
+        <div class="option anim-fade-up anim-delay-4" data-type="ecom" onclick="selectOption(this)">
+          <span class="option__index">03</span>
+          <div class="option__icon">&#9733;</div>
+          <div class="option__label">Интернет-магазин</div>
+          <div class="option__desc">E-commerce платформа</div>
+          <div class="option__check"></div>
+        </div>
+
+        <div class="option anim-fade-up anim-delay-4" data-type="saas" onclick="selectOption(this)">
+          <span class="option__index">04</span>
+          <div class="option__icon">&#9881;</div>
+          <div class="option__label">SaaS / Сервис</div>
+          <div class="option__desc">Облачный продукт, платформа</div>
+          <div class="option__check"></div>
+        </div>
+
+        <div class="option anim-fade-up anim-delay-5" data-type="design" onclick="selectOption(this)">
+          <span class="option__index">05</span>
+          <div class="option__icon">&#9998;</div>
+          <div class="option__label">Дизайн</div>
+          <div class="option__desc">UX/UI, брендинг, графика</div>
+          <div class="option__check"></div>
+        </div>
+
+        <div class="option anim-fade-up anim-delay-5" data-type="other" onclick="selectOption(this)">
+          <span class="option__index">06</span>
+          <div class="option__icon">&#10022;</div>
+          <div class="option__label">Другое</div>
+          <div class="option__desc">Нестандартный проект</div>
+          <div class="option__check"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step indicators -->
+    <div class="steps anim-fade-up anim-delay-5">
+      <div class="steps__dot steps__dot--active"></div>
+      <div class="steps__dot"></div>
+      <div class="steps__dot"></div>
+      <div class="steps__dot"></div>
+      <span class="steps__label">1 из 4 шагов</span>
+    </div>
+  </main>
+
+  <!-- Right HUD -->
+  <div class="hud-right">
+    <div class="hud-right__version">v2.0.26</div>
+    <div class="hud-right__indicators">
+      <div class="hud-indicator">
+        <span>SSL</span>
+        <span class="dot dot--green"></span>
+      </div>
+      <div class="hud-indicator">
+        <span>API</span>
+        <span class="dot dot--cyan"></span>
+      </div>
+      <div class="hud-indicator">
+        <span>DB</span>
+        <span class="dot dot--green"></span>
+      </div>
+      <div class="hud-indicator">
+        <span>QUEUE</span>
+        <span class="dot dot--amber"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Left HUD -->
+  <div class="hud-left">
+    <div class="hud-left__line"><span>SYS</span> CALC_ENGINE</div>
+    <div class="hud-left__line"><span>VER</span> 2.0.26-beta</div>
+    <div class="hud-left__line"><span>MEM</span> <span id="memUsage">64.2</span>MB</div>
+    <div class="hud-left__line"><span>FPS</span> <span id="fpsCount">60</span></div>
+  </div>
+
+  <!-- Footer info -->
+  <div class="footer-info">
+    CALC SYSTEM<br>
+    &copy; 2026
+  </div>
+
+  <!-- Marquee -->
+  <div class="marquee">
+    <div class="marquee__track">
+      <span class="marquee__text">
+        PROJECT COST ESTIMATOR
+        <span class="sep">//</span>
+        БЫСТРАЯ ОЦЕНКА ПРОЕКТА
+        <span class="sep">//</span>
+        CALC SYSTEM
+        <span class="sep">//</span>
+        ТОЧНЫЙ РАСЧЁТ ЗА 4 ШАГА
+        <span class="sep">//</span>
+        ОЦЕНКА СТОИМОСТИ
+        <span class="sep">//</span>
+        ВЕБ-РАЗРАБОТКА
+        <span class="sep">//</span>
+        МОБИЛЬНЫЕ ПРИЛОЖЕНИЯ
+        <span class="sep">//</span>
+        SAAS РЕШЕНИЯ
+        <span class="sep">//</span>
+      </span>
+      <span class="marquee__text">
+        PROJECT COST ESTIMATOR
+        <span class="sep">//</span>
+        БЫСТРАЯ ОЦЕНКА ПРОЕКТА
+        <span class="sep">//</span>
+        CALC SYSTEM
+        <span class="sep">//</span>
+        ТОЧНЫЙ РАСЧЁТ ЗА 4 ШАГА
+        <span class="sep">//</span>
+        ОЦЕНКА СТОИМОСТИ
+        <span class="sep">//</span>
+        ВЕБ-РАЗРАБОТКА
+        <span class="sep">//</span>
+        МОБИЛЬНЫЕ ПРИЛОЖЕНИЯ
+        <span class="sep">//</span>
+        SAAS РЕШЕНИЯ
+        <span class="sep">//</span>
+      </span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// === LOADING SEQUENCE ===
+(function() {
+  const loader = document.getElementById('loader');
+  const page = document.getElementById('page');
+  let progress = 0;
+  const interval = setInterval(function() {
+    progress += Math.random() * 15 + 5;
+    if (progress >= 100) {
+      progress = 100;
+      clearInterval(interval);
+      loader.style.width = '100%';
+      setTimeout(function() {
+        loader.classList.add('done');
+        page.classList.add('visible');
+      }, 300);
+    } else {
+      loader.style.width = progress + '%';
+    }
+  }, 80);
+})();
+
+// === LIVE CLOCK ===
+function updateTime() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2, '0');
+  const m = String(now.getMinutes()).padStart(2, '0');
+  const s = String(now.getSeconds()).padStart(2, '0');
+  document.getElementById('liveTime').innerHTML =
+    h + '<span class="blink">:</span>' + m + '<span class="blink">:</span>' + s;
+}
+updateTime();
+setInterval(updateTime, 1000);
+
+// === CURSOR POSITION ===
+document.addEventListener('mousemove', function(e) {
+  const x = String(e.clientX).padStart(4, '0');
+  const y = String(e.clientY).padStart(4, '0');
+  document.getElementById('cursorPos').textContent = 'X:' + x + ' Y:' + y;
+});
+
+// === FAKE MEMORY/FPS FLUCTUATION ===
+setInterval(function() {
+  const mem = (60 + Math.random() * 12).toFixed(1);
+  document.getElementById('memUsage').textContent = mem;
+  const fps = Math.random() > 0.3 ? 60 : 59;
+  document.getElementById('fpsCount').textContent = fps;
+}, 2000);
+
+// === OPTION SELECTION ===
+function selectOption(el) {
+  document.querySelectorAll('.option').forEach(function(opt) {
+    opt.classList.remove('selected');
+  });
+  el.classList.add('selected');
+
+  // Micro-animation feedback
+  el.style.transform = 'scale(0.97)';
+  setTimeout(function() {
+    el.style.transform = '';
+  }, 150);
+}
+</script>
+
+</body>
+</html>

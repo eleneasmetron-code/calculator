@@ -1,0 +1,25 @@
+
+> calculator@0.1.0 dev
+> next dev --webpack --hostname 127.0.0.1 --port 3000
+
+▲ Next.js 16.2.12 (webpack)
+- Local:         http://127.0.0.1:3000
+- Network:       http://127.0.0.1:3000
+- Environments: .env.local
+✓ Ready in 1361ms
+
+○ Compiling / ...
+ GET / 200 in 16.6s (next.js: 15.3s, application-code: 1299ms)
+ GET / 200 in 201ms (next.js: 18ms, application-code: 183ms)
+ GET / 200 in 169ms (next.js: 8ms, application-code: 162ms)
+[AI] Trying Groq llama-3.3-70b-versatile, total chars: 3516
+ GET / 200 in 457ms (next.js: 213ms, application-code: 244ms)
+[AI] Groq llama-3.3-70b-versatile success!
+ POST /api/estimate 200 in 6.9s (next.js: 3.6s, application-code: 3.3s)
+[Pricing] Total context: 1018 chars, using FULL prompt
+[AI] Trying Groq llama-3.3-70b-versatile, total chars: 4596
+[AI] Provider returned 4xx, trying fallback...
+[AI] Trying NVIDIA nvidia/nemotron-3-super-120b-a12b, total chars: 4596
+[AI] NVIDIA nvidia/nemotron-3-super-120b-a12b success!
+ POST /api/estimate 200 in 52s (next.js: 14ms, application-code: 52s)
+ GET / 200 in 545ms (next.js: 19ms, application-code: 525ms)

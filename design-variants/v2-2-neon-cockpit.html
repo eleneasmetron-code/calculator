@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESTIMATE.SYS — Калькулятор стоимости проекта</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  /* ── RESET & BASE ─────────────────────────────────── */
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg:       #050510;
+    --pink:     #ff0080;
+    --cyan:     #00ffff;
+    --purple:   #6b2fa0;
+    --panel-bg: rgba(10, 10, 30, 0.75);
+    --border:   rgba(0, 255, 255, 0.15);
+    --text:     #c8d0e0;
+    --dim:      #5a6080;
+  }
+
+  html, body {
+    height: 100%; overflow: hidden;
+    background: var(--bg); color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+  }
+
+  /* ── STARFIELD ────────────────────────────────────── */
+  .starfield {
+    position: fixed; inset: 0; z-index: 0; overflow: hidden;
+  }
+  .starfield .layer {
+    position: absolute; inset: 0;
+    background-repeat: repeat;
+    will-change: transform;
+  }
+  .starfield .layer.s1 {
+    background-image:
+      radial-gradient(1px 1px at  47px  83px, rgba(255,255,255,0.7), transparent),
+      radial-gradient(1px 1px at 193px 247px, rgba(255,255,255,0.5), transparent),
+      radial-gradient(1px 1px at 311px  59px, rgba(0,255,255,0.4), transparent),
+      radial-gradient(1px 1px at 523px 411px, rgba(255,255,255,0.6), transparent),
+      radial-gradient(1px 1px at  97px 317px, rgba(255,0,128,0.3), transparent),
+      radial-gradient(1px 1px at 641px 173px, rgba(255,255,255,0.5), transparent),
+      radial-gradient(1px 1px at 407px 491px, rgba(0,255,255,0.3), transparent),
+      radial-gradient(1.5px 1.5px at 733px 127px, rgba(255,255,255,0.8), transparent);
+    background-size: 800px 600px;
+    animation: drift1 90s linear infinite;
+  }
+  .starfield .layer.s2 {
+    background-image:
+      radial-gradient(1px 1px at  61px 199px, rgba(255,255,255,0.4), transparent),
+      radial-gradient(1.2px 1.2px at 277px 389px, rgba(255,0,128,0.25), transparent),
+      radial-gradient(1px 1px at 443px  71px, rgba(255,255,255,0.5), transparent),
+      radial-gradient(1px 1px at 601px 317px, rgba(0,255,255,0.35), transparent),
+      radial-gradient(1px 1px at 157px 503px, rgba(255,255,255,0.35), transparent),
+      radial-gradient(1px 1px at 811px 241px, rgba(255,255,255,0.45), transparent);
+    background-size: 900px 700px;
+    animation: drift2 140s linear infinite;
+  }
+  .starfield .layer.s3 {
+    background-image:
+      radial-gradient(1.5px 1.5px at 131px 367px, rgba(0,255,255,0.5), transparent),
+      radial-gradient(2px 2px at 509px 109px, rgba(255,0,128,0.35), transparent),
+      radial-gradient(1.5px 1.5px at 743px 461px, rgba(255,255,255,0.6), transparent),
+      radial-gradient(1px 1px at 337px 281px, rgba(255,255,255,0.3), transparent);
+    background-size: 1000px 800px;
+    animation: drift3 200s linear infinite;
+  }
+  @keyframes drift1 { from { transform: translate(0,0); } to { transform: translate(-800px,-600px); } }
+  @keyframes drift2 { from { transform: translate(0,0); } to { transform: translate(-450px,-700px); } }
+  @keyframes drift3 { from { transform: translate(0,0); } to { transform: translate(-500px,-400px); } }
+
+  /* ── SCANLINE OVERLAY ─────────────────────────────── */
+  .scanlines {
+    position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.06) 2px,
+      rgba(0,0,0,0.06) 4px
+    );
+  }
+
+  /* ── PERSPECTIVE GRID FLOOR ───────────────────────── */
+  .grid-floor {
+    position: fixed;
+    bottom: 0; left: -20%; right: -20%;
+    height: 35vh; z-index: 0;
+    perspective: 400px;
+    overflow: hidden;
+  }
+  .grid-floor::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(to bottom, transparent 0%, rgba(0,255,255,0.04) 100%),
+      repeating-linear-gradient(90deg, rgba(0,255,255,0.08) 0px, transparent 1px, transparent 60px),
+      repeating-linear-gradient(0deg,  rgba(0,255,255,0.08) 0px, transparent 1px, transparent 60px);
+    transform: rotateX(65deg);
+    transform-origin: center top;
+    animation: gridScroll 8s linear infinite;
+  }
+  @keyframes gridScroll {
+    from { background-position: 0 0, 0 0, 0 0; }
+    to   { background-position: 0 60px, 0 60px, 0 60px; }
+  }
+
+  /* ── LAYOUT SHELL ─────────────────────────────────── */
+  .page {
+    position: relative; z-index: 1;
+    display: grid;
+    grid-template-rows: 42px 1fr 28px;
+    height: 100vh;
+  }
+
+  /* ── TOP BAR ──────────────────────────────────────── */
+  .top-bar {
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 20px;
+    background: rgba(5,5,16,0.9);
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .top-bar::before, .top-bar::after {
+    content: ''; position: absolute; top: 4px; bottom: 4px; width: 14px;
+    border: 1px solid var(--cyan);
+  }
+  .top-bar::before { left: 4px; border-right: none; }
+  .top-bar::after  { right: 4px; border-left: none; }
+
+  .hud-label {
+    font-family: 'Chakra Petch', sans-serif; font-weight: 700;
+    font-size: 14px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--cyan);
+    text-shadow: 0 0 8px rgba(0,255,255,0.5);
+  }
+  .hud-sep {
+    width: 1px; height: 18px; background: var(--border);
+  }
+  .hud-status {
+    display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--dim);
+  }
+  .hud-status .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #00ff88;
+    box-shadow: 0 0 6px #00ff88;
+    animation: blink 2s ease-in-out infinite;
+  }
+  .hud-status .dot.warn {
+    background: var(--pink);
+    box-shadow: 0 0 6px var(--pink);
+    animation: blink 1s ease-in-out infinite;
+  }
+  .top-bar .spacer { flex: 1; }
+  .hud-meta { font-size: 11px; color: var(--dim); letter-spacing: 1px; }
+
+  /* ── MAIN CONTENT AREA ────────────────────────────── */
+  .main {
+    display: grid;
+    grid-template-columns: 160px 1fr 150px;
+    gap: 0;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ── LEFT SIDEBAR — DATA READOUTS ─────────────────── */
+  .sidebar-left {
+    padding: 24px 16px;
+    display: flex; flex-direction: column; gap: 20px;
+    border-right: 1px solid var(--border);
+    background: rgba(5,5,16,0.5);
+  }
+  .readout { display: flex; flex-direction: column; gap: 4px; }
+  .readout-label {
+    font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--dim);
+  }
+  .readout-value {
+    font-family: 'Chakra Petch', sans-serif; font-weight: 700;
+    font-size: 22px; color: var(--cyan);
+    text-shadow: 0 0 10px rgba(0,255,255,0.4);
+  }
+  .readout-value.pink { color: var(--pink); text-shadow: 0 0 10px rgba(255,0,128,0.4); }
+  .readout-bar {
+    height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden;
+  }
+  .readout-bar-fill {
+    height: 100%; border-radius: 2px;
+    background: linear-gradient(90deg, var(--cyan), var(--purple));
+    box-shadow: 0 0 6px var(--cyan);
+  }
+  .readout-bar-fill.pink {
+    background: linear-gradient(90deg, var(--pink), var(--purple));
+    box-shadow: 0 0 6px var(--pink);
+  }
+  .indicator-row {
+    display: flex; align-items: center; gap: 8px; margin-top: 8px;
+  }
+  .indicator {
+    width: 8px; height: 8px; border-radius: 50%;
+    border: 1px solid var(--cyan);
+    position: relative;
+  }
+  .indicator.active {
+    background: var(--cyan);
+    box-shadow: 0 0 8px var(--cyan);
+    animation: blink 1.5s ease-in-out infinite;
+  }
+  .indicator.pink { border-color: var(--pink); }
+  .indicator.pink.active {
+    background: var(--pink);
+    box-shadow: 0 0 8px var(--pink);
+  }
+  .indicator-label { font-size: 9px; color: var(--dim); letter-spacing: 1px; }
+
+  /* Circular progress */
+  .circular-progress {
+    width: 60px; height: 60px; position: relative; margin: 4px auto;
+  }
+  .circular-progress svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .circular-progress .track { fill: none; stroke: rgba(255,255,255,0.06); stroke-width: 4; }
+  .circular-progress .fill  { fill: none; stroke-width: 4; stroke-linecap: round; }
+  .circular-progress .fill.cyan  { stroke: var(--cyan); filter: drop-shadow(0 0 4px var(--cyan)); }
+  .circular-progress .fill.pink  { stroke: var(--pink); filter: drop-shadow(0 0 4px var(--pink)); }
+  .circular-progress .center-val {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Chakra Petch', sans-serif; font-weight: 700;
+    font-size: 14px; color: var(--cyan);
+  }
+
+  /* ── CENTER PANEL ─────────────────────────────────── */
+  .center {
+    display: flex; flex-direction: column;
+    padding: 20px 32px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Hero */
+  .hero { text-align: center; margin-bottom: 20px; position: relative; }
+  .hero h1 {
+    font-family: 'Chakra Petch', sans-serif; font-weight: 700;
+    font-size: 42px; letter-spacing: 12px; text-transform: uppercase;
+    color: #fff;
+    text-shadow:
+      0 0 10px var(--cyan),
+      0 0 30px rgba(0,255,255,0.4),
+      0 0 60px rgba(0,255,255,0.15);
+    position: relative;
+  }
+  .hero h1::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 3px,
+      rgba(5,5,16,0.25) 3px,
+      rgba(5,5,16,0.25) 6px
+    );
+    pointer-events: none;
+  }
+  .hero-sub {
+    font-size: 11px; letter-spacing: 4px; color: var(--dim);
+    margin-top: 8px; text-transform: uppercase;
+  }
+
+  /* Dashboard frame with corner brackets */
+  .dashboard-frame {
+    flex: 1;
+    position: relative;
+    border: 1px solid var(--border);
+    background: var(--panel-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 24px;
+    display: flex; flex-direction: column; gap: 16px;
+    overflow: hidden;
+  }
+  /* Holographic glow */
+  .dashboard-frame::before {
+    content: '';
+    position: absolute; inset: -1px;
+    border-radius: inherit;
+    background: linear-gradient(135deg,
+      rgba(0,255,255,0.08) 0%,
+      transparent 40%,
+      transparent 60%,
+      rgba(255,0,128,0.06) 100%
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+  /* Corner brackets */
+  .corner { position: absolute; width: 18px; height: 18px; z-index: 2; }
+  .corner::before, .corner::after { content: ''; position: absolute; background: var(--cyan); }
+  .corner.tl { top: -1px; left: -1px; }
+  .corner.tl::before { top: 0; left: 0; width: 18px; height: 2px; }
+  .corner.tl::after  { top: 0; left: 0; width: 2px; height: 18px; }
+  .corner.tr { top: -1px; right: -1px; }
+  .corner.tr::before { top: 0; right: 0; width: 18px; height: 2px; }
+  .corner.tr::after  { top: 0; right: 0; width: 2px; height: 18px; }
+  .corner.bl { bottom: -1px; left: -1px; }
+  .corner.bl::before { bottom: 0; left: 0; width: 18px; height: 2px; }
+  .corner.bl::after  { bottom: 0; left: 0; width: 2px; height: 18px; }
+  .corner.br { bottom: -1px; right: -1px; }
+  .corner.br::before { bottom: 0; right: 0; width: 18px; height: 2px; }
+  .corner.br::after  { bottom: 0; right: 0; width: 2px; height: 18px; }
+
+  .frame-title {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--dim);
+    position: relative; z-index: 1;
+  }
+  .frame-title .line {
+    flex: 1; height: 1px;
+    background: linear-gradient(90deg, var(--border), transparent);
+  }
+
+  /* Project type cards */
+  .project-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    flex: 1;
+    position: relative; z-index: 1;
+    align-content: start;
+  }
+  .project-card {
+    position: relative;
+    background: rgba(10,10,30,0.6);
+    border: 1px solid rgba(0,255,255,0.1);
+    padding: 18px 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
+  }
+  .project-card::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(0,255,255,0.03), transparent);
+    transition: all 0.3s ease;
+    pointer-events: none;
+  }
+  .project-card:hover {
+    border-color: var(--cyan);
+    box-shadow: 0 0 20px rgba(0,255,255,0.15), inset 0 0 20px rgba(0,255,255,0.05);
+    transform: translateY(-2px);
+  }
+  .project-card:hover::before {
+    background: linear-gradient(135deg, rgba(0,255,255,0.08), rgba(255,0,128,0.03));
+  }
+  .project-card:hover .card-icon {
+    color: var(--cyan);
+    text-shadow: 0 0 12px rgba(0,255,255,0.6);
+  }
+  .project-card:hover .card-title {
+    color: #fff;
+    text-shadow: 0 0 8px rgba(0,255,255,0.3);
+  }
+  .project-card:nth-child(even):hover {
+    border-color: var(--pink);
+    box-shadow: 0 0 20px rgba(255,0,128,0.15), inset 0 0 20px rgba(255,0,128,0.05);
+  }
+  .project-card:nth-child(even):hover .card-icon {
+    color: var(--pink);
+    text-shadow: 0 0 12px rgba(255,0,128,0.6);
+  }
+  .card-icon {
+    font-size: 28px; margin-bottom: 10px;
+    color: var(--dim);
+    transition: all 0.3s ease;
+  }
+  .card-title {
+    font-family: 'Chakra Petch', sans-serif; font-weight: 600;
+    font-size: 13px; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--text);
+    margin-bottom: 6px;
+    transition: all 0.3s ease;
+  }
+  .card-desc {
+    font-size: 10px; color: var(--dim); line-height: 1.5;
+  }
+  .card-tag {
+    display: inline-block;
+    margin-top: 8px;
+    font-size: 9px; letter-spacing: 1px;
+    padding: 2px 8px;
+    border: 1px solid rgba(0,255,255,0.15);
+    color: var(--cyan);
+    text-transform: uppercase;
+  }
+  .project-card:nth-child(even) .card-tag {
+    border-color: rgba(255,0,128,0.15);
+    color: var(--pink);
+  }
+
+  /* ── RIGHT SIDEBAR — STEP PROGRESS ────────────────── */
+  .sidebar-right {
+    padding: 24px 16px;
+    display: flex; flex-direction: column; gap: 12px;
+    border-left: 1px solid var(--border);
+    background: rgba(5,5,16,0.5);
+  }
+  .step-title {
+    font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--dim); margin-bottom: 4px;
+  }
+
+  /* Vertical segmented bar */
+  .step-bar {
+    display: flex; flex-direction: column; gap: 4px; flex: 1;
+  }
+  .step-segment {
+    flex: 1; position: relative;
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 0;
+  }
+  .seg-bar {
+    width: 4px; flex: 1;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+  }
+  .seg-bar-fill {
+    position: absolute; top: 0; left: 0; width: 100%;
+    border-radius: 2px;
+  }
+  .seg-bar-fill.active {
+    height: 100%;
+    background: linear-gradient(180deg, var(--cyan), var(--purple));
+    box-shadow: 0 0 8px var(--cyan);
+    animation: pulseFill 2s ease-in-out infinite;
+  }
+  .seg-bar-fill.done {
+    height: 100%;
+    background: var(--cyan);
+    opacity: 0.4;
+  }
+  @keyframes pulseFill {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+  }
+  .seg-node {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.1);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .seg-node.done {
+    border-color: var(--cyan);
+    background: rgba(0,255,255,0.15);
+  }
+  .seg-node.active {
+    border-color: var(--cyan);
+    background: var(--cyan);
+    box-shadow: 0 0 10px var(--cyan), 0 0 20px rgba(0,255,255,0.3);
+    animation: nodePulse 1.5s ease-in-out infinite;
+  }
+  .seg-node.active::after {
+    content: ''; width: 4px; height: 4px; border-radius: 50%;
+    background: var(--bg);
+  }
+  @keyframes nodePulse {
+    0%, 100% { box-shadow: 0 0 10px var(--cyan), 0 0 20px rgba(0,255,255,0.3); }
+    50%      { box-shadow: 0 0 16px var(--cyan), 0 0 32px rgba(0,255,255,0.5); }
+  }
+  .seg-label {
+    font-size: 9px; letter-spacing: 1px; color: var(--dim);
+    white-space: nowrap;
+  }
+  .seg-label.active { color: var(--cyan); }
+  .seg-label.done { color: rgba(0,255,255,0.5); }
+
+  /* Step readout mini */
+  .step-readout {
+    margin-top: 12px; padding: 10px;
+    border: 1px solid var(--border);
+    background: rgba(5,5,16,0.6);
+  }
+  .step-readout .sr-label {
+    font-size: 9px; color: var(--dim); letter-spacing: 1px; margin-bottom: 6px;
+  }
+  .step-readout .sr-value {
+    font-family: 'Chakra Petch', sans-serif; font-weight: 700;
+    font-size: 18px; color: var(--pink);
+    text-shadow: 0 0 8px rgba(255,0,128,0.4);
+  }
+
+  /* ── BOTTOM STATUS BAR ────────────────────────────── */
+  .bottom-bar {
+    display: flex; align-items: center;
+    padding: 0 20px;
+    background: rgba(5,5,16,0.95);
+    border-top: 1px solid var(--border);
+    overflow: hidden;
+    position: relative;
+  }
+  .bottom-bar .status-label {
+    font-size: 9px; letter-spacing: 2px; color: var(--dim);
+    text-transform: uppercase; white-space: nowrap;
+    margin-right: 16px; flex-shrink: 0;
+  }
+  .scroll-text {
+    flex: 1; overflow: hidden; white-space: nowrap; position: relative;
+  }
+  .scroll-text span {
+    display: inline-block;
+    font-size: 10px; color: var(--dim); letter-spacing: 1px;
+    animation: scrollText 30s linear infinite;
+  }
+  @keyframes scrollText {
+    0%   { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
+  }
+  .bottom-bar .status-right {
+    font-size: 9px; color: var(--dim); letter-spacing: 1px;
+    margin-left: 16px; white-space: nowrap; flex-shrink: 0;
+  }
+
+  /* ── UTILITY ANIMATIONS ───────────────────────────── */
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.2; }
+  }
+  @keyframes borderPulse {
+    0%, 100% { border-color: rgba(0,255,255,0.15); }
+    50%      { border-color: rgba(0,255,255,0.35); }
+  }
+
+  /* Pulsing border on dashboard frame */
+  .dashboard-frame {
+    animation: borderPulse 4s ease-in-out infinite;
+  }
+
+  /* Neon underline for hover */
+  .neon-underline {
+    position: relative;
+  }
+  .neon-underline::after {
+    content: '';
+    position: absolute; bottom: -4px; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .neon-underline:hover::after { opacity: 1; }
+
+  /* Vignette */
+  .vignette {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(5,5,16,0.6) 100%);
+  }
+</style>
+</head>
+<body>
+
+<!-- Background layers -->
+<div class="starfield">
+  <div class="layer s1"></div>
+  <div class="layer s2"></div>
+  <div class="layer s3"></div>
+</div>
+<div class="grid-floor"></div>
+<div class="vignette"></div>
+<div class="scanlines"></div>
+
+<!-- Page layout -->
+<div class="page">
+
+  <!-- ═══ TOP BAR ═══ -->
+  <header class="top-bar">
+    <span class="hud-label">ESTIMATE.SYS</span>
+    <span class="hud-sep"></span>
+    <span class="hud-status"><span class="dot"></span> СИСТЕМА АКТИВНА</span>
+    <span class="hud-sep"></span>
+    <span class="hud-status"><span class="dot warn"></span> СЕССИЯ: #4A2F</span>
+    <span class="spacer"></span>
+    <span class="hud-meta">ВЕРСИЯ 2.4.1 &nbsp;|&nbsp; МОДУЛЬ РАСЧЁТА</span>
+    <span class="hud-sep"></span>
+    <span class="hud-meta" id="clock">00:00:00</span>
+  </header>
+
+  <!-- ═══ MAIN CONTENT ═══ -->
+  <div class="main">
+
+    <!-- ── LEFT SIDEBAR ── -->
+    <aside class="sidebar-left">
+
+      <div class="readout">
+        <span class="readout-label">Загрузка</span>
+        <span class="readout-value">42%</span>
+        <div class="readout-bar"><div class="readout-bar-fill" style="width:42%"></div></div>
+      </div>
+
+      <div class="readout">
+        <span class="readout-label">Точность</span>
+        <span class="readout-value pink">94%</span>
+        <div class="readout-bar"><div class="readout-bar-fill pink" style="width:94%"></div></div>
+      </div>
+
+      <div class="readout">
+        <span class="readout-label">Конфигурация</span>
+        <div class="circular-progress">
+          <svg viewBox="0 0 36 36">
+            <circle class="track" cx="18" cy="18" r="15.5"/>
+            <circle class="fill cyan" cx="18" cy="18" r="15.5"
+              stroke-dasharray="97.4" stroke-dashoffset="29.2"/>
+          </svg>
+          <span class="center-val">70%</span>
+        </div>
+      </div>
+
+      <div class="indicator-row">
+        <span class="indicator active"></span>
+        <span class="indicator-label">СВЯЗЬ</span>
+      </div>
+      <div class="indicator-row">
+        <span class="indicator active pink"></span>
+        <span class="indicator-label">ПАМЯТЬ</span>
+      </div>
+      <div class="indicator-row">
+        <span class="indicator"></span>
+        <span class="indicator-label">КЭШ</span>
+      </div>
+      <div class="indicator-row">
+        <span class="indicator active"></span>
+        <span class="indicator-label">ПОТОК</span>
+      </div>
+
+      <div class="readout" style="margin-top:auto;">
+        <span class="readout-label">Буфер</span>
+        <span class="readout-value" style="font-size:16px;">1 024</span>
+      </div>
+
+    </aside>
+
+    <!-- ── CENTER ── -->
+    <section class="center">
+
+      <div class="hero">
+        <h1>КАЛЬКУЛЯТОР</h1>
+        <div class="hero-sub">Выберите тип проекта для расчёта стоимости</div>
+      </div>
+
+      <div class="dashboard-frame">
+        <span class="corner tl"></span>
+        <span class="corner tr"></span>
+        <span class="corner bl"></span>
+        <span class="corner br"></span>
+
+        <div class="frame-title">
+          <span>Выбор типа проекта</span>
+          <span class="line"></span>
+          <span>шаг 01 / 05</span>
+        </div>
+
+        <div class="project-grid">
+
+          <div class="project-card">
+            <div class="card-icon">&#9672;</div>
+            <div class="card-title">Веб-сайт</div>
+            <div class="card-desc">Корпоративный сайт, лендинг, портал</div>
+            <span class="card-tag">от 150 000 &#8381;</span>
+          </div>
+
+          <div class="project-card">
+            <div class="card-icon">&#9783;</div>
+            <div class="card-title">Мобильное приложение</div>
+            <div class="card-desc">iOS, Android, кроссплатформа</div>
+            <span class="card-tag">от 500 000 &#8381;</span>
+          </div>
+
+          <div class="project-card">
+            <div class="card-icon">&#9881;</div>
+            <div class="card-title">CRM / ERP система</div>
+            <div class="card-desc">Автоматизация бизнес-процессов</div>
+            <span class="card-tag">от 800 000 &#8381;</span>
+          </div>
+
+          <div class="project-card">
+            <div class="card-icon">&#9733;</div>
+            <div class="card-title">Интернет-магазин</div>
+            <div class="card-desc">E-commerce платформа с интеграциями</div>
+            <span class="card-tag">от 350 000 &#8381;</span>
+          </div>
+
+          <div class="project-card">
+            <div class="card-icon">&#9830;</div>
+            <div class="card-title">API / Интеграция</div>
+            <div class="card-desc">Сервисная шина, микросервисы</div>
+            <span class="card-tag">от 200 000 &#8381;</span>
+          </div>
+
+          <div class="project-card">
+            <div class="card-icon">&#9670;</div>
+            <div class="card-title">Аналитика / BI</div>
+            <div class="card-desc">Дашборды, отчёты, визуализация</div>
+            <span class="card-tag">от 250 000 &#8381;</span>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ── RIGHT SIDEBAR ── -->
+    <aside class="sidebar-right">
+
+      <div class="step-title">Прогресс</div>
+
+      <div class="step-bar">
+
+        <div class="step-segment">
+          <div class="seg-node active"></div>
+          <div>
+            <div class="seg-label active">Тип проекта</div>
+          </div>
+        </div>
+        <div class="seg-bar"><div class="seg-bar-fill active"></div></div>
+
+        <div class="step-segment">
+          <div class="seg-node"></div>
+          <div>
+            <div class="seg-label">Функционал</div>
+          </div>
+        </div>
+        <div class="seg-bar"><div class="seg-bar-fill"></div></div>
+
+        <div class="step-segment">
+          <div class="seg-node"></div>
+          <div>
+            <div class="seg-label">Дизайн</div>
+          </div>
+        </div>
+        <div class="seg-bar"><div class="seg-bar-fill"></div></div>
+
+        <div class="step-segment">
+          <div class="seg-node"></div>
+          <div>
+            <div class="seg-label">Сроки</div>
+          </div>
+        </div>
+        <div class="seg-bar"><div class="seg-bar-fill"></div></div>
+
+        <div class="step-segment">
+          <div class="seg-node"></div>
+          <div>
+            <div class="seg-label">Результат</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="step-readout">
+        <div class="sr-label">ТЕКУЩИЙ ШАГ</div>
+        <div class="sr-value">01</div>
+      </div>
+
+      <div class="readout" style="margin-top: 12px;">
+        <span class="readout-label">Прогресс</span>
+        <div class="circular-progress" style="width:50px;height:50px;">
+          <svg viewBox="0 0 36 36">
+            <circle class="track" cx="18" cy="18" r="15.5"/>
+            <circle class="fill pink" cx="18" cy="18" r="15.5"
+              stroke-dasharray="97.4" stroke-dashoffset="77.9"/>
+          </svg>
+          <span class="center-val" style="font-size:12px;color:var(--pink);">20%</span>
+        </div>
+      </div>
+
+    </aside>
+
+  </div>
+
+  <!-- ═══ BOTTOM STATUS BAR ═══ -->
+  <footer class="bottom-bar">
+    <span class="status-label">&#9654; СТАТУС</span>
+    <div class="scroll-text">
+      <span>
+        СИСТЕМА ГОТОВА К РАБОТЕ &nbsp;&#8226;&nbsp; ВЫБЕРИТЕ ТИП ПРОЕКТА ДЛЯ НАЧАЛА РАСЧЁТА &nbsp;&#8226;&nbsp;
+        БАЗА ДАННЫХ: 2 847 ПРОЕКТОВ &nbsp;&#8226;&nbsp; СРЕДНЕЕ ВРЕМЯ РАСЧЁТА: 3.2 СЕК &nbsp;&#8226;&nbsp;
+        ТОЧНОСТЬ ОЦЕНКИ: 94.7% &nbsp;&#8226;&nbsp; ОБНОВЛЕНИЕ БАЗЫ: 2025-06-14 &nbsp;&#8226;&nbsp;
+        ПОДДЕРЖКА: ESTIMATE@SYS.RU &nbsp;&#8226;&nbsp; ВСЕ ПРАВА ЗАЩИЩЕНЫ
+      </span>
+    </div>
+    <span class="status-right">v2.4.1 | ПИНГ: 12мс</span>
+  </footer>
+
+</div>
+
+<script>
+  // Live clock in top bar
+  function tick() {
+    const d = new Date();
+    const h = String(d.getHours()).padStart(2,'0');
+    const m = String(d.getMinutes()).padStart(2,'0');
+    const s = String(d.getSeconds()).padStart(2,'0');
+    document.getElementById('clock').textContent = h + ':' + m + ':' + s;
+  }
+  tick();
+  setInterval(tick, 1000);
+</script>
+</body>
+</html>
